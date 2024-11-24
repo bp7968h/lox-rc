@@ -17,12 +17,17 @@ impl<'a> VM<'a>{
         VM { chunk: None, ip: None, stack: Vec::new() }
     }
 
-    pub fn interpret(&mut self, chunk: &'a Chunk) -> InterpretResult {
-        self.chunk = Some(chunk);
-        self.ip = Some(chunk.code());
-
-        self.run()
+    pub fn interpret(&self, source: &str) -> InterpretResult {
+        // self.compile(source);
+        InterpretResult::INTERPRET_OK
     }
+
+    // pub fn interpret(&mut self, chunk: &'a Chunk) -> InterpretResult {
+    //     self.chunk = Some(chunk);
+    //     self.ip = Some(chunk.code());
+
+    //     self.run()
+    // }
 
     fn push(&mut self, value: f64) {
         self.stack.push(value);
