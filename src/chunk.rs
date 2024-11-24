@@ -1,13 +1,23 @@
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 #[repr(u8)]
 pub enum OpCode {
   CONSTANT,
   RETURN,
 }
 
-#[derive(Debug)]
+impl OpCode {
+  pub fn from_byte(byte: u8) -> Option<Self> {
+    match byte {
+      0 => Some(OpCode::CONSTANT),
+      1 => Some(OpCode::RETURN),
+      _ => None
+    }
+  }
+}
+
+#[derive(Debug, Clone)]
 pub struct Chunk {
   code: Vec<u8>,
   lines: Vec<usize>,
@@ -21,6 +31,17 @@ impl Chunk {
       lines: Vec::new(),
       constants: Vec::new(),
     }
+  }
+
+  pub fn code(&self) -> &[u8] {
+    &self.code
+  }
+
+  pub fn get_constant(&self, idx: usize) -> Option<f64> {
+    if idx < self.constants.len() {
+      return Some(self.constants[idx]);
+    }
+    None
   }
 
   pub fn write(&mut self, byte: u8, line: usize) {
