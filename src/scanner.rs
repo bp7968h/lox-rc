@@ -118,10 +118,60 @@ impl<'a> Scanner<'a> {
                 {
                     self.advance();
                 }
-                return self.make_token(TokenType::IDENTIFIER);
+                return self.identifier_type();
             }
             _ => return self.error_token("Unexpected character."),
         }
+    }
+
+    fn identifier_type(&mut self) -> Token {
+        match self.source[self.start] as char {
+            'a' => self.check_keyword(1, 2, "nd", TokenType::AND),
+            'c' => self.check_keyword(1, 4, "lass", TokenType::CLASS),
+            'e' => self.check_keyword(1, 3, "lse", TokenType::ELSE),
+            'f' => {
+                if self.current - self.start > 1 {
+                    match self.source[self.start + 1] as char {
+                        'a' => self.check_keyword(2, 3, "lse", TokenType::FALSE),
+                        'o' => self.check_keyword(2, 1, "r", TokenType::FOR),
+                        'u' => self.check_keyword(2, 1, "n", TokenType::FUN),
+                        _ => self.make_token(TokenType::IDENTIFIER)
+                    }
+                } else {
+                    self.make_token(TokenType::IDENTIFIER)
+                }
+            }
+            'i' => self.check_keyword(1, 1, "f", TokenType::IF),
+            'n' => self.check_keyword(1, 2, "il", TokenType::NIL),
+            'o' => self.check_keyword(1, 1, "r", TokenType::OR),
+            'p' => self.check_keyword(1, 4, "rint", TokenType::PRINT),
+            'r' => self.check_keyword(1, 5, "eturn", TokenType::RETURN),
+            's' => self.check_keyword(1, 4, "uper", TokenType::SUPER),
+            't' => {
+                if self.current - self.start > 1 {
+                    match self.source[self.start + 1] as char {
+                        'h' => self.check_keyword(2, 2, "is", TokenType::THIS),
+                        'r' => self.check_keyword(2, 2, "ue", TokenType::TRUE),
+                        _ => self.make_token(TokenType::IDENTIFIER)
+                    }
+                } else {
+                    self.make_token(TokenType::IDENTIFIER)
+                }
+            }
+            'v' => self.check_keyword(1, 2, "ar", TokenType::VAR),
+            'w' => self.check_keyword(1, 4, "hile", TokenType::WHILE),
+            _ => self.make_token(TokenType::IDENTIFIER)
+        }
+    }
+
+    fn check_keyword(&mut self, start: usize, length: usize, rest: &str, token_type: TokenType) -> Token {
+        let slice = &self.source[self.start + start..self.start + start + length];
+        if let Ok(slice_str) = std::str::from_utf8(slice) {
+            if self.current - self.start == start + length && slice_str == rest {
+                return self.make_token(token_type);
+            }
+        }
+        self.make_token(TokenType::IDENTIFIER)
     }
 
     fn match_number(&mut self) -> Token {
