@@ -1,8 +1,8 @@
-use crate::chunk::{Chunk, OpCode};
+use crate::{chunk::{Chunk, OpCode}, compiler::Compiler};
 
 pub struct VM<'a> {
-    chunk: Option<&'a Chunk>,
-    ip: Option<&'a [u8]>,
+    chunk: Option<Chunk>,
+    ip: Option<Vec<u8>>,
     stack: Vec<f64>
 }
 
@@ -17,17 +17,19 @@ impl<'a> VM<'a>{
         VM { chunk: None, ip: None, stack: Vec::new() }
     }
 
-    pub fn interpret(&self, source: &str) -> InterpretResult {
-        // self.compile(source);
-        InterpretResult::INTERPRET_OK
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
+        let mut chunk = Chunk::new();
+
+        if !Compiler::compile(source, &mut chunk) {
+            return InterpretResult::INTERPRET_COMPILE_ERROR;
+        }
+
+        let code = chunk.code().to_owned();
+        self.chunk = Some(chunk);
+        self.ip = Some(code);
+
+        self.run()
     }
-
-    // pub fn interpret(&mut self, chunk: &'a Chunk) -> InterpretResult {
-    //     self.chunk = Some(chunk);
-    //     self.ip = Some(chunk.code());
-
-    //     self.run()
-    // }
 
     fn push(&mut self, value: f64) {
         self.stack.push(value);
@@ -38,12 +40,10 @@ impl<'a> VM<'a>{
     }
 
     pub fn run(&mut self) -> InterpretResult {
-        if let Some(ip) = self.ip {
-            // println!("Ip Len: {:?}", ip.len());
+        if let Some(ip) = &self.ip {
             let mut ip_iter = ip.iter().enumerate();
 
-            while let Some((offset ,&instruction)) = ip_iter.next() {
-                // println!("Offset: {}", offset);
+            while let Some((_offset ,&instruction)) = ip_iter.next() {
                 match OpCode::from_byte(instruction) {
                     Some(oc) => {
                         match oc {
