@@ -41,6 +41,21 @@ impl<'a, 'b> Compiler<'a, 'b> {
         }
     }
 
+    fn parse_grouping(&mut self) {
+        self.expression();
+        self.consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
+    }
+
+    fn parse_unary(&mut self) {
+        if let Some(operator_type) = self.parser.previous.clone() {
+            self.expression();
+            match operator_type.token_type {
+                TokenType::MINUS => self.emit_byte(OpCode::NEGATE as u8),
+                _ => return
+            }
+        }
+    }
+
     fn make_constant(&mut self, value: f64) -> u8 {
         let constant = self.chunk.add_constant(value);
 
@@ -56,7 +71,7 @@ impl<'a, 'b> Compiler<'a, 'b> {
 
     pub fn compile(&mut self) -> bool {
         self.advance();
-        Self::expression();
+        self.expression();
         self.consume(TokenType::EOF, "Expect end of expression.");
         self.end_compiler();
         !self.parser.had_error
@@ -100,7 +115,7 @@ impl<'a, 'b> Compiler<'a, 'b> {
         }
     }
 
-    fn expression() {
+    fn expression(&mut self) {
         todo!()
     }
 

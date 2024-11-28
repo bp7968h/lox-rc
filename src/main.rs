@@ -1,4 +1,4 @@
-use jlox_rc::{chunk::{Chunk, OpCode}, vm::VM};
+use jlox_rc::{chunk::{Chunk, OpCode}, vm::{InterpretResult, VM}};
 use std::env;
 use std::process;
 use std::fs;
@@ -8,7 +8,11 @@ fn main() {
         match fs::read_to_string(&args) {
             Ok(content) => {
                 let mut vm = VM::new();
-                vm.interpret(&content);
+                match vm.interpret(&content) {
+                    InterpretResult::INTERPRET_COMPILE_ERROR => process::exit(65),
+                    InterpretResult::INTERPRET_RUNTIME_ERROR => process::exit(70),
+                    InterpretResult::INTERPRET_OK => ()
+                }
             },
             Err(e) => {
                 eprintln!("Error Reading Filer: [{}]", e);
