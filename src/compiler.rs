@@ -1,3 +1,5 @@
+use std::u8;
+
 use crate::{chunk::{Chunk, OpCode}, scanner::{self, Scanner, Token, TokenType}};
 
 pub struct Parser {
@@ -27,6 +29,39 @@ impl<'a, 'b> Compiler<'a, 'b> {
         }
     }
 
+    fn parse_number(&mut self) {
+        if let Some(prev_token) = &self.parser.previous {
+            let start = prev_token.start;
+            let length = prev_token.length;
+
+            if let Some(constant) = self.scanner.get_slice_constant(start, start + length) {
+                let constant_byte = self.chunk.add_constant(constant) as u8;
+                self.emit_bytes(OpCode::CONSTANT as u8, constant_byte);
+            }
+        }
+    }
+
+    fn make_constant(&mut self, value: f64) -> u8 {
+        let constant = self.chunk.add_constant(value);
+
+        if constant > 255 {
+            if let Some(curr_token) = self.parser.current.clone() {
+                self.error_at(&curr_token, "Too many constants in one chunk.");
+            }
+            return 0;
+        }
+
+        constant as u8
+    }
+
+    pub fn compile(&mut self) -> bool {
+        self.advance();
+        Self::expression();
+        self.consume(TokenType::EOF, "Expect end of expression.");
+        self.end_compiler();
+        !self.parser.had_error
+    }
+
     pub fn emit_byte(&mut self, byte: u8) {
         if let Some(prev_token) = &self.parser.previous {
             self.chunk.write(byte, prev_token.line);
@@ -36,14 +71,6 @@ impl<'a, 'b> Compiler<'a, 'b> {
     pub fn emit_bytes(&mut self, byte_a: u8, byte_b: u8) {
         self.emit_byte(byte_a);
         self.emit_byte(byte_b);
-    }
-
-    pub fn compile(&mut self) -> bool {
-        self.advance();
-        Self::expression();
-        self.consume(TokenType::EOF, "Expect end of expression.");
-        self.end_compiler();
-        !self.parser.had_error
     }
 
     fn end_compiler(&mut self) {

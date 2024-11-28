@@ -35,6 +35,18 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    pub fn get_slice_constant(&self, start: usize, end: usize) -> Option<f64> {
+        if end <= self.source.len() {
+            if let Ok(str_value) = std::str::from_utf8(&self.source[start..=end]) {
+                str_value.parse::<f64>().ok()
+            } else {
+                None 
+            }
+        } else {
+            None
+        }
+    }
+
     fn skip_whitespace(&mut self) {
         loop {
             let character = self.peek();
