@@ -1,6 +1,6 @@
 use crate::{chunk::{Chunk, OpCode}, compiler::Compiler};
 
-pub struct VM<'a> {
+pub struct VM {
     chunk: Option<Chunk>,
     ip: Option<Vec<u8>>,
     stack: Vec<f64>
@@ -12,15 +12,16 @@ pub enum InterpretResult {
     INTERPRET_RUNTIME_ERROR,
 }
 
-impl<'a> VM<'a>{
+impl VM{
     pub fn new() -> Self {
         VM { chunk: None, ip: None, stack: Vec::new() }
     }
 
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let mut chunk = Chunk::new();
+        let mut compiler = Compiler::new(source, &mut chunk);
 
-        if !Compiler::compile(source, &mut chunk) {
+        if !compiler.compile() {
             return InterpretResult::INTERPRET_COMPILE_ERROR;
         }
 
@@ -40,18 +41,19 @@ impl<'a> VM<'a>{
     }
 
     pub fn run(&mut self) -> InterpretResult {
-        if let Some(ip) = &self.ip {
-            let mut ip_iter = ip.iter().enumerate();
+        if let Some(ip) = self.ip.clone() {
+            let mut ip_iter = ip.iter();
 
-            while let Some((_offset ,&instruction)) = ip_iter.next() {
+            while let Some( &instruction) = ip_iter.next() {
                 match OpCode::from_byte(instruction) {
                     Some(oc) => {
                         match oc {
                             OpCode::CONSTANT => {
-                                if let Some(chunk) = self.chunk {
-                                    if let Some((_, &const_idx)) = ip_iter.next() {
+                                if let Some(chunk) = &self.chunk {
+                                    if let Some(&const_idx) = ip_iter.next() {
                                         if let Some(constant) = chunk.get_constant(const_idx as usize) {
-                                            self.push(constant);
+                                            let cloned = constant.clone();
+                                            self.push(cloned);
                                         } else {
                                             println!("Value not found");
                                         }
