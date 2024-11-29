@@ -6,21 +6,11 @@ use crate::{
     token::{Token, TokenType}
 };
 
-pub struct Parser {
+pub struct Compiler<'a, 'b> {
+    scanner: Scanner<'a>,
     current: Option<Token>,
     previous: Option<Token>,
     had_error: bool,
-}
-
-impl Parser {
-    fn new() -> Self {
-        Parser { current: None, previous: None, had_error: false }
-    }
-}
-
-pub struct Compiler<'a, 'b> {
-    scanner: Scanner<'a>,
-    parser: Parser,
     chunk: &'b mut Chunk
 }
 
@@ -28,13 +18,15 @@ impl<'a, 'b> Compiler<'a, 'b> {
     pub fn new(source: &'a str, chunk: &'b mut Chunk) -> Self {
         Compiler {
             scanner: Scanner::new(source),
-            parser: Parser::new(),
-            chunk
+            current: None, 
+            previous: None, 
+            had_error: false,
+            chunk,
         }
     }
 
     fn parse_number(&mut self) {
-        if let Some(prev_token) = &self.parser.previous {
+        if let Some(prev_token) = &self.previous {
             let start = prev_token.start;
             let length = prev_token.length;
 
@@ -51,7 +43,7 @@ impl<'a, 'b> Compiler<'a, 'b> {
     }
 
     fn parse_unary(&mut self) {
-        if let Some(operator_type) = self.parser.previous.clone() {
+        if let Some(operator_type) = self.previous.clone() {
             self.expression();
             match operator_type.token_type {
                 TokenType::MINUS => self.emit_byte(OpCode::NEGATE as u8),
@@ -64,7 +56,7 @@ impl<'a, 'b> Compiler<'a, 'b> {
         let constant = self.chunk.add_constant(value);
 
         if constant > 255 {
-            if let Some(curr_token) = self.parser.current.clone() {
+            if let Some(curr_token) = self.current.clone() {
                 self.error_at(&curr_token, "Too many constants in one chunk.");
             }
             return 0;
@@ -78,11 +70,11 @@ impl<'a, 'b> Compiler<'a, 'b> {
         self.expression();
         self.consume(TokenType::EOF, "Expect end of expression.");
         self.end_compiler();
-        !self.parser.had_error
+        !self.had_error
     }
 
     pub fn emit_byte(&mut self, byte: u8) {
-        if let Some(prev_token) = &self.parser.previous {
+        if let Some(prev_token) = &self.previous {
             self.chunk.write(byte, prev_token.line);
         }
     }
@@ -101,12 +93,12 @@ impl<'a, 'b> Compiler<'a, 'b> {
     }
 
     fn advance(&mut self) {
-        self.parser.previous = self.parser.current.take();
+        self.previous = self.current.take();
 
         loop {
-            self.parser.current = Some(self.scanner.scan_token());
+            self.current = Some(self.scanner.scan_token());
             
-            if let Some(curr_token) = self.parser.current.take() {
+            if let Some(curr_token) = self.current.take() {
                 match curr_token.token_type {
                     TokenType::ERROR(_) => {
                         self.error_at(&curr_token, "",);
@@ -124,7 +116,7 @@ impl<'a, 'b> Compiler<'a, 'b> {
     }
 
     fn consume(&mut self, token_type: TokenType, msg: &str) {
-        if let Some(curr_token) = self.parser.current.clone() {
+        if let Some(curr_token) = self.current.clone() {
             if curr_token.token_type == token_type {
                 self.advance();
                 return;
@@ -143,6 +135,6 @@ impl<'a, 'b> Compiler<'a, 'b> {
         }
 
         println!(": {}", msg);
-        self.parser.had_error = true;
+        self.had_error = true;
     }
 }
