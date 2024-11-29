@@ -1,6 +1,6 @@
 use std::u8;
 
-use crate::{chunk::{Chunk, OpCode}, scanner::{self, Scanner, Token, TokenType}};
+use crate::{chunk::{Chunk, OpCode}, scanner::Scanner, token::{Token, TokenType}};
 
 pub struct Parser {
     current: Option<Token>,
