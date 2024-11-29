@@ -1,6 +1,10 @@
 use std::u8;
-
-use crate::{chunk::{Chunk, OpCode}, scanner::Scanner, token::{Token, TokenType}};
+use crate::{
+    chunk::Chunk, 
+    opcode::OpCode, 
+    scanner::Scanner, 
+    token::{Token, TokenType}
+};
 
 pub struct Parser {
     current: Option<Token>,
@@ -43,7 +47,7 @@ impl<'a, 'b> Compiler<'a, 'b> {
 
     fn parse_grouping(&mut self) {
         self.expression();
-        self.consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
+        self.consume(TokenType::RIGHTPAREN, "Expect ')' after expression.");
     }
 
     fn parse_unary(&mut self) {

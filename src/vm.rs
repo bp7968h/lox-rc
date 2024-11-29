@@ -1,15 +1,14 @@
-use crate::{chunk::{Chunk, OpCode}, compiler::Compiler};
+use crate::{
+    chunk::Chunk, 
+    compiler::Compiler, 
+    opcode::OpCode, 
+    InterpretResult
+};
 
 pub struct VM {
     chunk: Option<Chunk>,
     ip: Option<Vec<u8>>,
     stack: Vec<f64>
-}
-
-pub enum InterpretResult {
-    INTERPRET_OK,
-    INTERPRET_COMPILE_ERROR,
-    INTERPRET_RUNTIME_ERROR,
 }
 
 impl VM{
@@ -22,7 +21,7 @@ impl VM{
         let mut compiler = Compiler::new(source, &mut chunk);
 
         if !compiler.compile() {
-            return InterpretResult::INTERPRET_COMPILE_ERROR;
+            return Err(crate::InterpretError::CompileError);
         }
 
         let code = chunk.code().to_owned();
@@ -45,8 +44,8 @@ impl VM{
             let mut ip_iter = ip.iter();
 
             while let Some( &instruction) = ip_iter.next() {
-                match OpCode::from_byte(instruction) {
-                    Some(oc) => {
+                match OpCode::try_from(instruction) {
+                    Ok(oc) => {
                         match oc {
                             OpCode::CONSTANT => {
                                 if let Some(chunk) = &self.chunk {
@@ -69,7 +68,7 @@ impl VM{
                                 if let Some(value) = self.pop() {
                                     println!("{}", value);
                                 }
-                                return InterpretResult::INTERPRET_OK
+                                return Ok(());
                             },
                             OpCode::ADD => self.binary_op(|a, b| a + b),
                             OpCode::SUBTRACT => self.binary_op(|a,b| a - b),
@@ -77,12 +76,11 @@ impl VM{
                             OpCode::DIVIDE => self.binary_op(|a,b| a / b),
                         }
                     },
-                    None => return InterpretResult::INTERPRET_COMPILE_ERROR,
+                    Err(e) => Err(e)?,
                 }
             }
         }
-
-        InterpretResult::INTERPRET_OK
+        Ok(())
     }
 
     fn binary_op<F>(&mut self, op: F) 

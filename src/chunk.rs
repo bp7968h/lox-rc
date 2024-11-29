@@ -1,32 +1,3 @@
-
-
-#[derive(Debug, PartialEq, Clone)]
-#[repr(u8)]
-pub enum OpCode {
-  CONSTANT,
-  NEGATE,
-  RETURN,
-  ADD,
-  SUBTRACT,
-  MULTIPLY,
-  DIVIDE,
-}
-
-impl OpCode {
-  pub fn from_byte(byte: u8) -> Option<Self> {
-    match byte {
-      0 => Some(OpCode::CONSTANT),
-      1 => Some(OpCode::NEGATE),
-      2 => Some(OpCode::RETURN),
-      3 => Some(OpCode::ADD),
-      4 => Some(OpCode::SUBTRACT),
-      5 => Some(OpCode::MULTIPLY),
-      6 => Some(OpCode::DIVIDE),
-      _ => None
-    }
-  }
-}
-
 #[derive(Debug, Clone)]
 pub struct Chunk {
   code: Vec<u8>,

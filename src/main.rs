@@ -1,4 +1,5 @@
-use jlox_rc::{chunk::{Chunk, OpCode}, vm::{InterpretResult, VM}};
+use jlox_rc::InterpretError;
+use jlox_rc::vm::VM;
 use std::env;
 use std::process;
 use std::fs;
@@ -9,9 +10,13 @@ fn main() {
             Ok(content) => {
                 let mut vm = VM::new();
                 match vm.interpret(&content) {
-                    InterpretResult::INTERPRET_COMPILE_ERROR => process::exit(65),
-                    InterpretResult::INTERPRET_RUNTIME_ERROR => process::exit(70),
-                    InterpretResult::INTERPRET_OK => ()
+                    Ok(_) => (),
+                    Err(e) => {
+                        match e {
+                            InterpretError::CompileError => process::exit(65),
+                            InterpretError::RuntimeError => process::exit(70),
+                        }
+                    }
                 }
             },
             Err(e) => {

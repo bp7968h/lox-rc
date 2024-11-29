@@ -69,10 +69,10 @@ impl<'a> Scanner<'a> {
         let character = self.advance();
 
         match character {
-            '(' => return self.make_token(TokenType::LEFT_PAREN),
-            ')' => return self.make_token(TokenType::RIGHT_PAREN),
-            '{' => return self.make_token(TokenType::LEFT_BRACE),
-            '}' => return self.make_token(TokenType::RIGHT_BRACE),
+            '(' => return self.make_token(TokenType::LEFTPAREN),
+            ')' => return self.make_token(TokenType::RIGHTPAREN),
+            '{' => return self.make_token(TokenType::LEFTBRACE),
+            '}' => return self.make_token(TokenType::RIGHTBRACE),
             ';' => return self.make_token(TokenType::SEMICOLON),
             ',' => return self.make_token(TokenType::COMMA),
             '.' => return self.make_token(TokenType::DOT),
@@ -82,27 +82,27 @@ impl<'a> Scanner<'a> {
             '*' => return self.make_token(TokenType::STAR),
             '!' => {
                 if self.match_token('=') {
-                    return self.make_token(TokenType::BANG_EQUAL);
+                    return self.make_token(TokenType::BANGEQUAL);
                 }
                 return self.make_token(TokenType::BANG);
             }
             '=' => {
                 if self.match_token('=') {
-                    return self.make_token(TokenType::EQUAL_EQUAL);
+                    return self.make_token(TokenType::EQUALEQUAL);
                 }
                 return self.make_token(TokenType::EQUAL);
             }
             '<' => {
                 if self.match_token('=') {
-                    return self.make_token(TokenType::LESS_EQUAL);
+                    return self.make_token(TokenType::LESSEQUAL);
                 }
                 return self.make_token(TokenType::LESS);
             }
             '>' => {
                 if self.match_token('=') {
-                    return self.make_token(TokenType::GREATER_EQUAL);
+                    return self.make_token(TokenType::GREATEREQUAL);
                 }
-                return self.make_token(TokenType::GREATER_EQUAL);
+                return self.make_token(TokenType::GREATEREQUAL);
             }
             '"' => return self.match_string(),
             '0'..='9' => self.match_number(),
