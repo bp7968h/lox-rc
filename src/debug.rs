@@ -1,7 +1,5 @@
 use crate::{chunk::Chunk, opcode::OpCode};
 
-
-
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     println!("== {} ==", name);
 
@@ -49,9 +47,9 @@ fn simple_instruction(instruction_name: &str, offset: &mut usize) {
 }
 
 fn constant_instruction(instruction_name: &str, chunk: &Chunk, offset: &mut usize) {
-    let constant = chunk.op_codes_at(*offset + 1);
-    print!("{:<16} {:4} ", instruction_name, constant);
-    println!("'{}'", chunk.get_constant(constant as usize).unwrap());
+    let constant_idx = chunk.op_codes_at(*offset + 1);
+    print!("{:<16} {:4} ", instruction_name, constant_idx);
+    println!("'{}'", chunk.get_constant(constant_idx as usize));
 
     *offset += 2;
 }

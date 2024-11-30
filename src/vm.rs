@@ -50,12 +50,9 @@ impl VM{
                             OpCode::CONSTANT => {
                                 if let Some(chunk) = &self.chunk {
                                     if let Some(&const_idx) = ip_iter.next() {
-                                        if let Some(constant) = chunk.get_constant(const_idx as usize) {
-                                            let cloned = constant.clone();
-                                            self.push(cloned);
-                                        } else {
-                                            println!("Value not found");
-                                        }
+                                        let constant = chunk.get_constant(const_idx as usize);
+                                        let cloned = constant.clone();
+                                        self.push(cloned);
                                     }
                                 }
                             },

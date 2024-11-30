@@ -31,14 +31,14 @@ impl Chunk {
       return self.lines[offset];
     }
 
-    panic!("Offset is higher than line count");
+    panic!("[Chunk-Lines] Offset is higher than line count");
   }
 
-  pub fn get_constant(&self, idx: usize) -> Option<f64> {
+  pub fn get_constant(&self, idx: usize) -> f64 {
     if idx < self.constants.len() {
-      return Some(self.constants[idx]);
+      return self.constants[idx];
     }
-    None
+    panic!("[Chunk-Constant] Offset is higher than line count");
   }
 
   pub fn write(&mut self, byte: u8, line: usize) {
