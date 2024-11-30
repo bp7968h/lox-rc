@@ -1,8 +1,5 @@
 use crate::{
-    chunk::Chunk,
-    opcode::OpCode,
-    scanner::Scanner,
-    token::{Token, TokenType},
+    chunk::Chunk, debug::disassemble_chunk, opcode::OpCode, scanner::Scanner, token::{Token, TokenType}
 };
 use std::u8;
 
@@ -138,7 +135,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     fn end_compiler(&mut self) {
         self.emit_return();
         if !self.had_error {
-            self.chunk.dissassemble_chunk("code");
+            disassemble_chunk(&self.chunk, "code");
         }
     }
 

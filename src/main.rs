@@ -52,7 +52,7 @@ fn main() {
 
     // chunk.write(OpCode::RETURN as u8, 123);
 
-    // chunk.dissassemble_chunk("test chunk");
+    // disassemble_chunk(&chunk,"test chunk");
 
     // vm.interpret(&chunk);
 }

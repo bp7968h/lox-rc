@@ -24,7 +24,7 @@ impl VM{
             return Err(crate::InterpretError::CompileError);
         }
 
-        let code = chunk.code().to_owned();
+        let code = chunk.op_codes().to_owned();
         self.chunk = Some(chunk);
         self.ip = Some(code);
 
