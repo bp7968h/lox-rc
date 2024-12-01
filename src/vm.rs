@@ -18,16 +18,16 @@ impl VM{
         self.debug = state
     }
 
-    // pub fn interpret(&mut self, source: &str) -> InterpretResult {
-    pub fn interpret(&mut self, chunk: Chunk) -> InterpretResult {
-        // let mut chunk = Chunk::new();
-        // let mut compiler = Compiler::new(source, &mut chunk);
-
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
+        let mut chunk = Chunk::new();
+        let mut compiler = Compiler::new(source, &mut chunk);
+        compiler.compile();
         // if !compiler.compile() {
         //     return Err(crate::InterpretError::CompileError);
         // }
-        self.chunk = Some(chunk);
-        self.run()
+        Ok(())
+        // self.chunk = Some(chunk);
+        // self.run()
     }
 
     pub fn run(&mut self) -> InterpretResult {

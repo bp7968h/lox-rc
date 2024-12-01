@@ -24,30 +24,52 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    pub fn compile(&mut self) -> bool {
-        self.had_error = false;
-        self.panic_mode = false;
-
-        self.advance();
-        self.expression();
-        self.consume(TokenType::EOF, "Expect end of expression.");
-        self.end_compiler();
-        !self.had_error
+    pub fn scan_token(&mut self) -> Token {
+        self.scanner.scan_token()
     }
+
+    pub fn compile(&mut self) {
+        let mut line: usize = 0;
+        loop {
+            let token: Token = self.scan_token();
+            if token.line != line {
+                print!("{:4} ", token.line);
+                line = token.line;
+            } else {
+                print!("   | ");
+            }
+            println!("{:?} '{}'", token.token_type, token.lexeme);
+
+            if token.token_type == TokenType::EOF {
+                break;
+            }
+        }
+    }
+
+    // pub fn compile(&mut self) -> bool {
+    //     self.had_error = false;
+    //     self.panic_mode = false;
+
+    //     self.advance();
+    //     self.expression();
+    //     self.consume(TokenType::EOF, "Expect end of expression.");
+    //     self.end_compiler();
+    //     !self.had_error
+    // }
 
     fn expression(&mut self) {
         self.parse_precedence(Precedence::ASSIGNMENT);
     }
 
     fn parse_number(&mut self) {
-        if let Some(prev_token) = &self.previous {
-            let start = prev_token.start;
-            let length = prev_token.length;
+        // if let Some(prev_token) = &self.previous {
+        //     let start = prev_token.start;
+        //     let length = prev_token.length;
 
-            if let Some(constant) = self.scanner.get_slice_constant(start, start + length) {
-                self.emit_constant(constant);
-            }
-        }
+        //     if let Some(constant) = self.scanner.get_slice_constant(start, start + length) {
+        //         self.emit_constant(constant);
+        //     }
+        // }
     }
 
     fn parse_grouping(&mut self) {
@@ -151,7 +173,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
             if let Some(curr_token) = self.current.take() {
                 match curr_token.token_type {
-                    TokenType::ERROR(_) => {
+                    TokenType::ERROR => {
                         self.error_at(&curr_token, "");
                     }
                     _ => {
@@ -182,8 +204,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
         match &token.token_type {
             TokenType::EOF => eprint!("at end"),
-            TokenType::ERROR(s) => eprint!("{s}"),
-            _ => eprint!("at {} {}", token.length, token.start),
+            TokenType::ERROR => eprint!("{}", token.lexeme),
+            _ => eprint!("at {}", token.lexeme),
         }
 
         println!(": {}", msg);
@@ -236,7 +258,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::TRUE => ParseRule::new(None, None, Precedence::NONE),
             TokenType::VAR => ParseRule::new(None, None, Precedence::NONE),
             TokenType::WHILE => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::ERROR(_) => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::ERROR => ParseRule::new(None, None, Precedence::NONE),
             TokenType::EOF => ParseRule::new(None, None, Precedence::NONE),
         }
     }

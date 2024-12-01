@@ -1,3 +1,5 @@
+use core::str;
+
 use crate::token::{Token, TokenType};
 
 #[derive(Debug, PartialEq)]
@@ -30,34 +32,6 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn skip_whitespace(&mut self) {
-        loop {
-            let character = self.peek();
-            match character {
-                ' ' | '\r' | '\t' => {
-                    self.advance();
-                    break;
-                }
-                '\n' => {
-                    self.line += 1;
-                    self.advance();
-                    break;
-                }
-                '/' => {
-                    if self.peek_next() == '/' {
-                        while self.peek() != '\n' && !self.is_at_end() {
-                            self.advance();
-                        }
-                    } else {
-                        return;
-                    }
-                    break;
-                }
-                _ => return,
-            }
-        }
-    }
-
     pub fn scan_token(&mut self) -> Token {
         self.skip_whitespace();
         self.start = self.current;
@@ -85,25 +59,25 @@ impl<'a> Scanner<'a> {
                     return self.make_token(TokenType::BANGEQUAL);
                 }
                 return self.make_token(TokenType::BANG);
-            }
+            },
             '=' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::EQUALEQUAL);
                 }
                 return self.make_token(TokenType::EQUAL);
-            }
+            },
             '<' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::LESSEQUAL);
                 }
                 return self.make_token(TokenType::LESS);
-            }
+            },
             '>' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::GREATEREQUAL);
                 }
                 return self.make_token(TokenType::GREATEREQUAL);
-            }
+            },
             '"' => return self.match_string(),
             '0'..='9' => self.match_number(),
             'a'..='z' | 'A'..='Z' | '_' => {
@@ -114,8 +88,32 @@ impl<'a> Scanner<'a> {
                     self.advance();
                 }
                 return self.identifier_type();
+            },
+            _ => return self.error_token("Unexpected character.".to_string()),
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        loop {
+            let character = self.peek();
+            match character {
+                ' ' | '\r' | '\t' => {
+                    self.advance();
+                }
+                '\n' => {
+                    self.line += 1;
+                    self.advance();
+                }
+                '/' => {
+                    if self.peek_next() == '/' {
+                        while self.peek() != '\n' && !self.is_at_end() {
+                            self.advance();
+                        }
+                    }
+                    return;
+                }
+                _ => return,
             }
-            _ => return self.error_token("Unexpected character."),
         }
     }
 
@@ -198,7 +196,7 @@ impl<'a> Scanner<'a> {
         }
 
         if self.is_at_end() {
-            return self.error_token("Unterminated string");
+            return self.error_token("Unterminated string".to_string());
         }
 
         self.advance();
@@ -209,8 +207,8 @@ impl<'a> Scanner<'a> {
         if self.is_at_end() || self.source[self.current] as char != expected {
             return false;
         }
-
         self.current += 1;
+
         true
     }
 
@@ -222,6 +220,9 @@ impl<'a> Scanner<'a> {
     }
 
     fn peek(&self) -> char {
+        if self.is_at_end() {
+            return '\0';
+        }
         self.source[self.current].into()
     }
 
@@ -231,16 +232,21 @@ impl<'a> Scanner<'a> {
     }
 
     fn make_token(&mut self, token_type: TokenType) -> Token {
-        Token::new(token_type, self.start, self.current - self.start, self.line)
+        assert!(self.start <= self.current, "Invalid slice bounds in Scanner");
+        let (start, end) = match token_type {
+            TokenType::STRING => (self.start + 1, self.current - 1),
+            _ => (self.start, self.current)
+        };
+        
+        let lexeme = match str::from_utf8(&self.source[start..end]) {
+            Ok(s) => s.to_string(),
+            Err(e) => return self.error_token(e.to_string()),
+        };
+        Token::new(token_type, lexeme, self.line)
     }
 
-    fn error_token(&mut self, err_msg: &str) -> Token {
-        Token::new(
-            TokenType::ERROR(err_msg.to_string()),
-            self.start,
-            err_msg.len(),
-            self.line,
-        )
+    fn error_token(&mut self, err_msg: String) -> Token {
+        Token::new(TokenType::ERROR, err_msg, self.line)
     }
 
     fn is_at_end(&self) -> bool {

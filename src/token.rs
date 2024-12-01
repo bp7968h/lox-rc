@@ -1,18 +1,16 @@
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
-    pub start: usize,
-    pub length: usize,
+    pub lexeme: String,
     pub line: usize,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, start: usize, length: usize, line: usize) -> Self {
+    pub fn new(token_type: TokenType, lexeme: String, line: usize) -> Self {
         Token {
             token_type,
-            start,
-            length,
             line,
+            lexeme: lexeme,
         }
     }
 }
@@ -62,6 +60,6 @@ pub enum TokenType {
     VAR,
     WHILE,
 
-    ERROR(String),
+    ERROR,
     EOF,
 }
