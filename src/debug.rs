@@ -9,11 +9,11 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
             break;
         }
 
-        disassemble_instruction(chunk, &mut offset);
+        offset = disassemble_instruction(chunk, &offset);
     }
 }
 
-pub fn disassemble_instruction(chunk: &Chunk, offset: &mut usize) {
+pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
     print!("{:04}", offset);
     
     let curr_line = chunk.line_from_offset(*offset);
@@ -36,20 +36,20 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &mut usize) {
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");
-            *offset += 1;
+            *offset + 1
         }
     }
 }
 
-fn simple_instruction(instruction_name: &str, offset: &mut usize) {
+fn simple_instruction(instruction_name: &str, offset: &usize) -> usize {
     println!("{}", instruction_name);
-    *offset += 1;
+    *offset + 1
 }
 
-fn constant_instruction(instruction_name: &str, chunk: &Chunk, offset: &mut usize) {
+fn constant_instruction(instruction_name: &str, chunk: &Chunk, offset: &usize) -> usize {
     let constant_idx = chunk.op_codes_at(*offset + 1);
     print!("{:<16} {:4} ", instruction_name, constant_idx);
     println!("'{}'", chunk.get_constant(constant_idx as usize));
 
-    *offset += 2;
+    *offset + 2
 }
