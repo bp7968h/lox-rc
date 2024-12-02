@@ -1,5 +1,9 @@
 use crate::{
-    chunk::Chunk, debug::disassemble_chunk, opcode::OpCode, scanner::Scanner, token::{Token, TokenType}
+    chunk::Chunk,
+    debug::disassemble_chunk,
+    opcode::OpCode,
+    scanner::Scanner,
+    token::{Token, TokenType},
 };
 use std::u8;
 
@@ -10,6 +14,7 @@ pub struct Compiler<'scanner, 'chunk> {
     had_error: bool,
     panic_mode: bool,
     chunk: &'chunk mut Chunk,
+    debug: bool
 }
 
 impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
@@ -20,56 +25,80 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             previous: None,
             had_error: false,
             panic_mode: false,
+            debug: false,
             chunk,
         }
     }
 
-    pub fn scan_token(&mut self) -> Token {
-        self.scanner.scan_token()
+    // pub fn compile(&mut self) {
+    //     let mut line: usize = 0;
+    //     loop {
+    //         let token: Token = self.scanner.scan_token();
+    //         if token.line != line {
+    //             print!("{:4} ", token.line);
+    //             line = token.line;
+    //         } else {
+    //             print!("   | ");
+    //         }
+    //         println!("{:?} '{}'", token.token_type, token.lexeme);
+
+    //         if token.token_type == TokenType::EOF {
+    //             break;
+    //         }
+    //     }
+    // }
+
+    pub fn compile(&mut self) -> bool {
+        self.had_error = false;
+        self.panic_mode = false;
+
+        self.advance();
+        self.expression();
+        self.consume(TokenType::EOF, "Expect end of expression.");
+        self.end_compiler();
+        !self.had_error
     }
 
-    pub fn compile(&mut self) {
-        let mut line: usize = 0;
-        loop {
-            let token: Token = self.scan_token();
-            if token.line != line {
-                print!("{:4} ", token.line);
-                line = token.line;
-            } else {
-                print!("   | ");
-            }
-            println!("{:?} '{}'", token.token_type, token.lexeme);
+    fn advance(&mut self) {
+        self.previous = self.current.take();
+        println!(
+            "Advance Fn - Prev {:?}, Curr {:?}",
+            self.previous, self.current
+        );
 
-            if token.token_type == TokenType::EOF {
-                break;
+        loop {
+            let scanned_token = self.scanner.scan_token();
+
+            match scanned_token.token_type {
+                TokenType::ERROR => {
+                    let err_message = scanned_token.lexeme.clone();
+                    self.current = Some(scanned_token);
+                    self.error_at_current(&err_message);
+                }
+                _ => {
+                    self.current = Some(scanned_token);
+                    break;
+                }
             }
         }
     }
-
-    // pub fn compile(&mut self) -> bool {
-    //     self.had_error = false;
-    //     self.panic_mode = false;
-
-    //     self.advance();
-    //     self.expression();
-    //     self.consume(TokenType::EOF, "Expect end of expression.");
-    //     self.end_compiler();
-    //     !self.had_error
-    // }
 
     fn expression(&mut self) {
         self.parse_precedence(Precedence::ASSIGNMENT);
     }
 
     fn parse_number(&mut self) {
-        // if let Some(prev_token) = &self.previous {
-        //     let start = prev_token.start;
-        //     let length = prev_token.length;
-
-        //     if let Some(constant) = self.scanner.get_slice_constant(start, start + length) {
-        //         self.emit_constant(constant);
-        //     }
-        // }
+        if let Some(prev_token) = self.previous.as_ref() {
+            match prev_token.lexeme.parse::<f64>() {
+                Ok(num_value) => {
+                    self.emit_constant(num_value);
+                }
+                Err(e) => {
+                    let err_str = e.to_string();
+                    self.error(&err_str)
+                }
+            }
+        }
     }
 
     fn parse_grouping(&mut self) {
@@ -88,25 +117,28 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     fn parse_binary(&mut self) {
-        if let Some(operator) = &self.previous {
+        if let Some(operator) = self.previous.clone() {
             let operator_type = &operator.token_type;
             let rule = Self::get_rule(operator_type.clone());
-            // self.parse_precedence();
+            let next_precedence = Precedence::from(rule.precedence as u8 + 1);
+            self.parse_precedence(next_precedence);
             match operator_type {
                 TokenType::PLUS => self.emit_byte(OpCode::ADD as u8),
                 TokenType::MINUS => self.emit_byte(OpCode::SUBTRACT as u8),
                 TokenType::STAR => self.emit_byte(OpCode::MULTIPLY as u8),
                 TokenType::SLASH => self.emit_byte(OpCode::DIVIDE as u8),
-                _ => return,
+                _ => unreachable!(),
             }
         }
     }
 
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.advance();
-        if let Some(prev_token) = &self.previous {
+        println!("PrsPre Fn - Prev: {:?}, Curr: {:?}", self.previous, self.current);
+        if let Some(prev_token) = self.previous.as_ref() {
             if let Some(prefix_rule) = Self::get_rule(prev_token.token_type.clone()).prefix {
                 prefix_rule(self);
+
                 while precedence as u8
                     <= Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).precedence
                         as u8
@@ -119,7 +151,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                     }
                 }
             } else {
-                self.error_at(&self.current.as_ref().unwrap().clone(), "Expect expression");
+                self.error("Expect expression");
                 return;
             }
         }
@@ -134,9 +166,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         let constant = self.chunk.add_constant(value);
 
         if constant > 255 {
-            if let Some(curr_token) = self.current.clone() {
-                self.error_at(&curr_token, "Too many constants in one chunk.");
-            }
+            self.error("Too many constants in one chunk.");
             return 0;
         }
 
@@ -144,7 +174,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     pub fn emit_byte(&mut self, byte: u8) {
-        if let Some(prev_token) = &self.previous {
+        if let Some(prev_token) = self.previous.as_ref() {
             self.chunk.write(byte, prev_token.line);
         }
     }
@@ -156,8 +186,10 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn end_compiler(&mut self) {
         self.emit_return();
-        if !self.had_error {
-            disassemble_chunk(&self.chunk, "code");
+        if self.debug {
+            if !self.had_error {
+                disassemble_chunk(&self.chunk, "code");
+            }
         }
     }
 
@@ -165,32 +197,27 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.emit_byte(OpCode::RETURN as u8);
     }
 
-    fn advance(&mut self) {
-        self.previous = self.current.take();
-
-        loop {
-            self.current = Some(self.scanner.scan_token());
-
-            if let Some(curr_token) = self.current.take() {
-                match curr_token.token_type {
-                    TokenType::ERROR => {
-                        self.error_at(&curr_token, "");
-                    }
-                    _ => {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    fn consume(&mut self, token_type: TokenType, msg: &str) {
-        if let Some(curr_token) = self.current.clone() {
+    fn consume(&mut self, token_type: TokenType, message: &str) {
+        if let Some(curr_token) = self.current.as_ref() {
             if curr_token.token_type == token_type {
                 self.advance();
                 return;
             }
-            self.error_at(&curr_token, msg);
+            self.error_at_current(message);
+        }
+    }
+
+    fn error_at_current(&mut self, message: &str) {
+        if let Some(curr_token) = self.current.take() {
+            self.error_at(&curr_token, message);
+            self.current = Some(curr_token);
+        }
+    }
+
+    fn error(&mut self, message: &str) {
+        if let Some(prev_token) = self.previous.take() {
+            self.error_at(&prev_token, message);
+            self.previous = Some(prev_token);
         }
     }
 
@@ -202,9 +229,9 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.panic_mode = true;
         eprint!("[line {} => Error ", token.line);
 
-        match &token.token_type {
+        match token.token_type {
             TokenType::EOF => eprint!("at end"),
-            TokenType::ERROR => eprint!("{}", token.lexeme),
+            TokenType::ERROR => (),
             _ => eprint!("at {}", token.lexeme),
         }
 
@@ -264,6 +291,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 }
 
+type ParseFn<'scanner, 'chunk> = fn(&mut Compiler<'scanner, 'chunk>) -> ();
+
 pub struct ParseRule<'scanner, 'chunk> {
     prefix: Option<ParseFn<'scanner, 'chunk>>,
     infix: Option<ParseFn<'scanner, 'chunk>>,
@@ -284,8 +313,6 @@ impl<'scanner, 'chunk> ParseRule<'scanner, 'chunk> {
     }
 }
 
-type ParseFn<'scanner, 'chunk> = fn(&mut Compiler<'scanner, 'chunk>) -> ();
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum Precedence {
@@ -300,4 +327,22 @@ pub enum Precedence {
     UNARY,      // ! -
     CALL,       // . ()
     PRIMARY,
+}
+
+impl From<u8> for Precedence {
+    fn from(value: u8) -> Self {
+        match value {
+            1 => Precedence::ASSIGNMENT,
+            2 => Precedence::OR,
+            3 => Precedence::AND,
+            4 => Precedence::EQUALITY,
+            5 => Precedence::COMPARISON,
+            6 => Precedence::TERM,
+            7 => Precedence::FACTOR,
+            8 => Precedence::UNARY,
+            9 => Precedence::CALL,
+            10 => Precedence::PRIMARY,
+            _ => Precedence::NONE,
+        }
+    }
 }

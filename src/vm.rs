@@ -1,5 +1,5 @@
 use crate::{
-    chunk::Chunk, compiler::Compiler, debug::{disassemble_chunk, disassemble_instruction}, opcode::OpCode, InterpretResult
+    chunk::Chunk, compiler::Compiler, debug::disassemble_instruction, opcode::OpCode, InterpretResult
 };
 
 pub struct VM {
@@ -21,13 +21,13 @@ impl VM{
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let mut chunk = Chunk::new();
         let mut compiler = Compiler::new(source, &mut chunk);
-        compiler.compile();
-        // if !compiler.compile() {
-        //     return Err(crate::InterpretError::CompileError);
-        // }
-        Ok(())
-        // self.chunk = Some(chunk);
-        // self.run()
+        
+        if !compiler.compile() {
+            return Err(crate::InterpretError::CompileError);
+        }
+       
+        self.chunk = Some(chunk);
+        self.run()
     }
 
     pub fn run(&mut self) -> InterpretResult {
@@ -60,7 +60,6 @@ impl VM{
                         OpCode::SUBTRACT => self.binary_op(|a,b| a - b),
                         OpCode::MULTIPLY => self.binary_op(|a,b| a * b),
                         OpCode::DIVIDE => self.binary_op(|a,b| a / b),
-                        _ => panic!()
                     } 
                 },
                 Err(e) => Err(e)?
@@ -102,10 +101,6 @@ impl VM{
         } else {
             eprintln!("Stack is empty");
         }
-    }
-
-    fn advance_ip_n(&mut self, advance_by: usize) {
-        self.instr_pos += advance_by;
     }
 
     fn push_value(&mut self, value: f64) {

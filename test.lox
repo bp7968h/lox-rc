@@ -1,5 +1,1 @@
-fun greet(first, last) {
-    print "Hi, " + first + " " + last + "!";
-}
-
-greet("Dear", "Reader");
+(-1 + 2) * 3 - -4
