@@ -136,23 +136,20 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.advance();
         println!("PrsPre Fn - Prev: {:?}, Curr: {:?}", self.previous, self.current);
         if let Some(prev_token) = self.previous.as_ref() {
-            if let Some(prefix_rule) = Self::get_rule(prev_token.token_type.clone()).prefix {
-                prefix_rule(self);
-
-                while precedence as u8
-                    <= Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).precedence
-                        as u8
-                {
-                    self.advance();
-                    if let Some(infix_rule) =
-                        Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).infix
-                    {
-                        infix_rule(self);
+            match Self::get_rule(prev_token.token_type.clone()).prefix {
+                Some(prefix_rule) => {
+                    prefix_rule(self);
+                    while precedence as u8 <= Self::get_rule(self.current.as_ref().unwrap().clone().token_type).precedence as u8 {
+                        self.advance();
+                        if let Some(infix_rule) = Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).infix {
+                            infix_rule(self);
+                        }
                     }
+                },
+                None => {
+                    self.error("Expect expression");
+                    return;
                 }
-            } else {
-                self.error("Expect expression");
-                return;
             }
         }
     }
