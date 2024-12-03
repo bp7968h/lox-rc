@@ -59,10 +59,10 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn advance(&mut self) {
         self.previous = self.current.take();
-        println!(
-            "Advance Fn - Prev {:?}, Curr {:?}",
-            self.previous, self.current
-        );
+        //println!(
+        //    "Advance Fn - Prev {:?}, Curr {:?}",
+        //    self.previous, self.current
+        //);
 
         loop {
             let scanned_token = self.scanner.scan_token();
@@ -105,7 +105,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     fn parse_unary(&mut self) {
-        if let Some(operator_type) = self.previous.clone() {
+        if let Some(operator_type) = self.previous.take() {
             self.parse_precedence(Precedence::UNARY);
             match operator_type.token_type {
                 TokenType::MINUS => self.emit_byte(OpCode::NEGATE as u8),
@@ -115,9 +115,9 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     fn parse_binary(&mut self) {
-        if let Some(operator) = self.previous.clone() {
+        if let Some(operator) = self.previous.take() {
             let operator_type = &operator.token_type;
-            let rule = Self::get_rule(operator_type.clone());
+            let rule = Self::get_rule(*operator_type);
             let next_precedence = Precedence::from(rule.precedence as u8 + 1);
             self.parse_precedence(next_precedence);
             match operator_type {
@@ -132,7 +132,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.advance();
-        println!("PrsPre Fn - Prev: {:?}, Curr: {:?}", self.previous, self.current);
+        //println!("PrsPre Fn - Prev: {:?}, Curr: {:?}", self.previous, self.current);
         if let Some(prev_token) = self.previous.as_ref() {
             match Self::get_rule(prev_token.token_type.clone()).prefix {
                 Some(prefix_rule) => {
