@@ -49,13 +49,11 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     // }
 
     pub fn compile(&mut self) -> bool {
-        self.had_error = false;
-        self.panic_mode = false;
-
         self.advance();
         self.expression();
         self.consume(TokenType::EOF, "Expect end of expression.");
         self.end_compiler();
+        
         !self.had_error
     }
 
