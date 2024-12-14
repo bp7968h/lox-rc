@@ -38,7 +38,6 @@ impl VM{
                     let _ = disassemble_instruction(chunk, &self.instr_pos);
                 }
             }
-            println!("constants: {:?}", self.chunk.as_ref().unwrap().constants);
 
             let instruction = self.read_byte();
 

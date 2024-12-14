@@ -36,16 +36,9 @@ impl Chunk {
     panic!("[Chunk-Lines] Offset is higher than line count");
   }
 
-  pub fn get_constant_debug(&self, idx: usize) -> &ValueType {
+  pub fn get_constant(&self, idx: usize) -> ValueType {
     if idx < self.constants.len() {
-      return &self.constants[idx];
-    }
-    panic!("[Chunk-Constant] Offset is higher than line count");
-  }
-
-  pub fn get_constant(&mut self, idx: usize) -> ValueType {
-    if idx < self.constants.len() {
-      return self.constants.remove(idx);
+      return self.constants[idx];
     }
     panic!("[Chunk-Constant] Offset is higher than line count");
   }

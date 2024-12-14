@@ -154,8 +154,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     fn emit_constant(&mut self, value: ValueType) {
-        let constant_byte = self.make_constant(value);
-        self.emit_bytes(OpCode::CONSTANT as u8, constant_byte);
+        let cons_byte_idx = self.make_constant(value);
+        self.emit_bytes(OpCode::CONSTANT as u8, cons_byte_idx);
     }
 
     fn make_constant(&mut self, value: ValueType) -> u8 {
