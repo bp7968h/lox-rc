@@ -1,8 +1,10 @@
-#[derive(Debug, Clone)]
+use crate::value::ValueType;
+
+#[derive(Debug)]
 pub struct Chunk {
   op_codes: Vec<u8>,
   lines: Vec<usize>,
-  constants: Vec<f64>,
+  pub constants: Vec<ValueType>,
 }
 
 impl Chunk {
@@ -34,9 +36,16 @@ impl Chunk {
     panic!("[Chunk-Lines] Offset is higher than line count");
   }
 
-  pub fn get_constant(&self, idx: usize) -> f64 {
+  pub fn get_constant_debug(&self, idx: usize) -> &ValueType {
     if idx < self.constants.len() {
-      return self.constants[idx];
+      return &self.constants[idx];
+    }
+    panic!("[Chunk-Constant] Offset is higher than line count");
+  }
+
+  pub fn get_constant(&mut self, idx: usize) -> ValueType {
+    if idx < self.constants.len() {
+      return self.constants.remove(idx);
     }
     panic!("[Chunk-Constant] Offset is higher than line count");
   }
@@ -46,7 +55,7 @@ impl Chunk {
     self.lines.push(line);
   }
 
-  pub fn add_constant(&mut self, value: f64) -> usize {
+  pub fn add_constant(&mut self, value: ValueType) -> usize {
     self.constants.push(value);
 
     self.constants.len() - 1

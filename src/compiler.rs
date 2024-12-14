@@ -3,7 +3,7 @@ use crate::{
     debug::disassemble_chunk,
     opcode::OpCode,
     scanner::Scanner,
-    token::{Token, TokenType},
+    token::{Token, TokenType}, value::ValueType,
 };
 use std::u8;
 
@@ -89,7 +89,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         if let Some(prev_token) = self.previous.as_ref() {
             match prev_token.lexeme.parse::<f64>() {
                 Ok(num_value) => {
-                    self.emit_constant(num_value);
+                    // self.emit_constant(num_value);
+                    self.emit_constant(ValueType::Number(num_value));
                 }
                 Err(e) => {
                     let err_str = e.to_string();
@@ -152,12 +153,12 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn emit_constant(&mut self, value: f64) {
+    fn emit_constant(&mut self, value: ValueType) {
         let constant_byte = self.make_constant(value);
         self.emit_bytes(OpCode::CONSTANT as u8, constant_byte);
     }
 
-    fn make_constant(&mut self, value: f64) -> u8 {
+    fn make_constant(&mut self, value: ValueType) -> u8 {
         let constant = self.chunk.add_constant(value);
 
         if constant > 255 {

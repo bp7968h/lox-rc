@@ -49,7 +49,7 @@ fn simple_instruction(instruction_name: &str, offset: &usize) -> usize {
 fn constant_instruction(instruction_name: &str, chunk: &Chunk, offset: &usize) -> usize {
     let constant_idx = chunk.op_codes_at(*offset + 1);
     print!("{:<16} {:4} ", instruction_name, constant_idx);
-    println!("'{}'", chunk.get_constant(constant_idx as usize));
+    println!("'{:?}'", &chunk.get_constant_debug(constant_idx as usize));
 
     *offset + 2
 }

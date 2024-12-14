@@ -1,12 +1,12 @@
 use crate::{
-    chunk::Chunk, compiler::Compiler, debug::disassemble_instruction, opcode::OpCode, InterpretResult
+    chunk::Chunk, compiler::Compiler, debug::disassemble_instruction, opcode::OpCode, value::ValueType, InterpretError, InterpretResult
 };
 
-pub struct VM {
+pub struct VM{
     chunk: Option<Chunk>,
     instr_pos: usize,
     debug: bool,
-    stack: Vec<f64>
+    stack: Vec<ValueType>
 }
 
 impl VM{
@@ -38,7 +38,7 @@ impl VM{
                     let _ = disassemble_instruction(chunk, &self.instr_pos);
                 }
             }
-
+            println!("constants: {:?}", self.chunk.as_ref().unwrap().constants);
 
             let instruction = self.read_byte();
 
@@ -55,11 +55,11 @@ impl VM{
                             let constant = self.read_constant();
                             self.push_value(constant);
                         },
-                        OpCode::NEGATE => self.negate_op(),
-                        OpCode::ADD => self.binary_op(|a, b| a + b),
-                        OpCode::SUBTRACT => self.binary_op(|a,b| a - b),
-                        OpCode::MULTIPLY => self.binary_op(|a,b| a * b),
-                        OpCode::DIVIDE => self.binary_op(|a,b| a / b),
+                        OpCode::NEGATE => self.negate_op()?,
+                        OpCode::ADD => self.binary_op(|a, b| a + b)?,
+                        OpCode::SUBTRACT => self.binary_op(|a,b| a - b)?,
+                        OpCode::MULTIPLY => self.binary_op(|a,b| a * b)?,
+                        OpCode::DIVIDE => self.binary_op(|a,b| a / b)?,
                     } 
                 },
                 Err(e) => Err(e)?
@@ -67,9 +67,9 @@ impl VM{
         }
     }
 
-    fn read_constant(&mut self) -> f64 {
+    fn read_constant(&mut self) -> ValueType {
         let constant_idx = self.read_byte();
-        if let Some(chunk) = &self.chunk {
+        if let Some(ref mut chunk) = self.chunk {
             return chunk.get_constant(constant_idx as usize);
         }
 
@@ -86,28 +86,50 @@ impl VM{
         panic!("[Read Byte] no chunk in vm to read!");
     }
 
-    fn binary_op<F>(&mut self, op: F) 
+    fn binary_op<F>(&mut self, op: F) -> InterpretResult 
         where F: Fn(f64, f64) -> f64 {
-            if let (Some(b), Some(a)) = (self.pop_value(), self.pop_value()) {
-                self.push_value(op(a,b));
-            } else {
-                eprintln!("Error: Not enough values on the stack");
+            match (self.pop_value(), self.pop_value()) {
+                (Some(ValueType::Number(b)), Some(ValueType::Number(a))) => {
+                    self.push_value(ValueType::Number(op(a, b)));
+                    Ok(())
+                }
+                (Some(_), Some(_)) => {
+                    eprintln!("Operands must be numbers.");
+                    InterpretResult::Err(InterpretError::RuntimeError)
+                }
+                _ => {
+                    eprintln!("Stack underflow.");
+                    InterpretResult::Err(InterpretError::RuntimeError)
+                }
             }
     }
 
-    fn negate_op(&mut self) {
+    fn negate_op(&mut self) -> InterpretResult {
         if let Some(curr_value) = self.stack.last_mut() {
-            *curr_value = -*curr_value;
-        } else {
-            eprintln!("Stack is empty");
+            match curr_value {
+                ValueType::Number(num) => {
+                    *num = -*num;
+                    return Ok(());
+                },
+                _ => return Err(InterpretError::RuntimeError),
+            }
         }
+        Err(InterpretError::RuntimeError)
     }
 
-    fn push_value(&mut self, value: f64) {
+    fn _peek(&self, distance: usize) -> Option<&ValueType> {
+        let stack_len = self.stack.len();
+        if distance >= stack_len {
+            return None;
+        }
+        self.stack.get(stack_len - 1 - distance)
+    }
+
+    fn push_value(&mut self, value: ValueType) {
         self.stack.push(value);
     }
 
-    fn pop_value(&mut self) -> Option<f64> {
+    fn pop_value(&mut self) -> Option<ValueType> {
         self.stack.pop()
     }
 
