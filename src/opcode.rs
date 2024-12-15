@@ -10,6 +10,10 @@ pub enum OpCode {
   SUBTRACT,
   MULTIPLY,
   DIVIDE,
+  NIL,
+  TRUE,
+  FALSE,
+  NOT
 }
 
 impl TryFrom<u8> for OpCode {
@@ -23,6 +27,10 @@ impl TryFrom<u8> for OpCode {
             4 => Ok(OpCode::SUBTRACT),
             5 => Ok(OpCode::MULTIPLY),
             6 => Ok(OpCode::DIVIDE),
+            7 => Ok(OpCode::NIL),
+            8 => Ok(OpCode::TRUE),
+            9 => Ok(OpCode::FALSE),
+            10 => Ok(OpCode::NOT),
             _ => Err(InterpretError::CompileError)
           }
     }

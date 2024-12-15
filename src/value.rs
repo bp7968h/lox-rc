@@ -16,3 +16,13 @@ impl fmt::Display for ValueType {
         }
     }
 }
+
+impl ValueType {
+    pub fn is_falsey(&self) -> bool {
+        match self {
+            ValueType::Nil => true,
+            ValueType::Bool(b) => !b,
+            _ => false
+        }
+    }
+}

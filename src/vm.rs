@@ -31,6 +31,7 @@ impl VM{
     }
 
     pub fn run(&mut self) -> InterpretResult {
+        // println!("Chunk: {:?}", self.chunk.as_ref().unwrap());
         loop {
             if self.debug {
                 if let Some(chunk) = &self.chunk {
@@ -59,6 +60,14 @@ impl VM{
                         OpCode::SUBTRACT => self.binary_op(|a,b| a - b)?,
                         OpCode::MULTIPLY => self.binary_op(|a,b| a * b)?,
                         OpCode::DIVIDE => self.binary_op(|a,b| a / b)?,
+                        OpCode::NIL => self.push_value(ValueType::Nil),
+                        OpCode::FALSE => self.push_value(ValueType::Bool(false)),
+                        OpCode::TRUE => self.push_value(ValueType::Bool(true)),
+                        OpCode::NOT => {
+                            if let Some(bool_val) = self.pop_value() {
+                                self.push_value(ValueType::Bool(bool_val.is_falsey()));
+                            }
+                        },
                     } 
                 },
                 Err(e) => Err(e)?

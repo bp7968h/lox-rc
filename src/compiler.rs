@@ -110,6 +110,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             self.parse_precedence(Precedence::UNARY);
             match operator_type.token_type {
                 TokenType::MINUS => self.emit_byte(OpCode::NEGATE as u8),
+                TokenType::BANG => self.emit_byte(OpCode::NOT as u8),
                 _ => return,
             }
         }
@@ -127,6 +128,17 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                 TokenType::STAR => self.emit_byte(OpCode::MULTIPLY as u8),
                 TokenType::SLASH => self.emit_byte(OpCode::DIVIDE as u8),
                 _ => unreachable!(),
+            }
+        }
+    }
+
+    fn parse_literal(&mut self) {
+        if let Some(token) = self.previous.as_ref() {
+            match token.token_type {
+                TokenType::FALSE => self.emit_byte(OpCode::FALSE as u8),
+                TokenType::NIL => self.emit_byte(OpCode::NIL as u8),
+                TokenType::TRUE => self.emit_byte(OpCode::TRUE as u8),
+                _ => return // unreachable!()
             }
         }
     }
@@ -254,7 +266,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::SEMICOLON => ParseRule::new(None, None, Precedence::NONE),
             TokenType::SLASH => ParseRule::new(None, Some(Self::parse_binary), Precedence::FACTOR),
             TokenType::STAR => ParseRule::new(None, Some(Self::parse_binary), Precedence::FACTOR),
-            TokenType::BANG => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::BANG => ParseRule::new(Some(Self::parse_unary), None, Precedence::NONE),
             TokenType::BANGEQUAL => ParseRule::new(None, None, Precedence::NONE),
             TokenType::EQUAL => ParseRule::new(None, None, Precedence::NONE),
             TokenType::EQUALEQUAL => ParseRule::new(None, None, Precedence::NONE),
@@ -268,17 +280,17 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::AND => ParseRule::new(None, None, Precedence::NONE),
             TokenType::CLASS => ParseRule::new(None, None, Precedence::NONE),
             TokenType::ELSE => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::FALSE => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::FALSE => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
             TokenType::FOR => ParseRule::new(None, None, Precedence::NONE),
             TokenType::FUN => ParseRule::new(None, None, Precedence::NONE),
             TokenType::IF => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::NIL => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::NIL => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
             TokenType::OR => ParseRule::new(None, None, Precedence::NONE),
             TokenType::PRINT => ParseRule::new(None, None, Precedence::NONE),
             TokenType::RETURN => ParseRule::new(None, None, Precedence::NONE),
             TokenType::SUPER => ParseRule::new(None, None, Precedence::NONE),
             TokenType::THIS => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::TRUE => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::TRUE => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
             TokenType::VAR => ParseRule::new(None, None, Precedence::NONE),
             TokenType::WHILE => ParseRule::new(None, None, Precedence::NONE),
             TokenType::ERROR => ParseRule::new(None, None, Precedence::NONE),
