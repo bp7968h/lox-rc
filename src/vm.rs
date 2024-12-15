@@ -1,17 +1,29 @@
 use crate::{
-    chunk::Chunk, compiler::Compiler, debug::disassemble_instruction, opcode::OpCode, value::ValueType, InterpretError, InterpretResult
+    chunk::Chunk, compiler::Compiler, debug::disassemble_instruction, opcode::OpCode,
+    value::ValueType, InterpretError, InterpretResult,
 };
 
-pub struct VM{
+pub struct VM {
     chunk: Option<Chunk>,
     instr_pos: usize,
     debug: bool,
-    stack: Vec<ValueType>
+    stack: Vec<ValueType>,
 }
 
-impl VM{
+impl Default for VM {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl VM {
     pub fn new() -> Self {
-        VM { chunk: None, instr_pos: 0, debug: true, stack: Vec::new() }
+        VM {
+            chunk: None,
+            instr_pos: 0,
+            debug: true,
+            stack: Vec::new(),
+        }
     }
 
     pub fn set_debug(&mut self, state: bool) {
@@ -21,11 +33,11 @@ impl VM{
     pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let mut chunk = Chunk::new();
         let mut compiler = Compiler::new(source, &mut chunk);
-        
+
         if !compiler.compile() {
             return Err(crate::InterpretError::CompileError);
         }
-       
+
         self.chunk = Some(chunk);
         self.run()
     }
@@ -43,34 +55,32 @@ impl VM{
             let instruction = self.read_byte();
 
             match OpCode::try_from(instruction) {
-                Ok(opcode) => {
-                    match opcode {
-                        OpCode::RETURN => {
-                            if let Some(stack_value) = self.pop_value() {
-                                println!("{}", stack_value);
-                            }
-                            return Ok(());
-                        },
-                        OpCode::CONSTANT => {
-                            let constant = self.read_constant();
-                            self.push_value(constant);
-                        },
-                        OpCode::NEGATE => self.negate_op()?,
-                        OpCode::ADD => self.binary_op(|a, b| a + b)?,
-                        OpCode::SUBTRACT => self.binary_op(|a,b| a - b)?,
-                        OpCode::MULTIPLY => self.binary_op(|a,b| a * b)?,
-                        OpCode::DIVIDE => self.binary_op(|a,b| a / b)?,
-                        OpCode::NIL => self.push_value(ValueType::Nil),
-                        OpCode::FALSE => self.push_value(ValueType::Bool(false)),
-                        OpCode::TRUE => self.push_value(ValueType::Bool(true)),
-                        OpCode::NOT => {
-                            if let Some(bool_val) = self.pop_value() {
-                                self.push_value(ValueType::Bool(bool_val.is_falsey()));
-                            }
-                        },
-                    } 
+                Ok(opcode) => match opcode {
+                    OpCode::RETURN => {
+                        if let Some(stack_value) = self.pop_value() {
+                            println!("{}", stack_value);
+                        }
+                        return Ok(());
+                    }
+                    OpCode::CONSTANT => {
+                        let constant = self.read_constant();
+                        self.push_value(constant);
+                    }
+                    OpCode::NEGATE => self.negate_op()?,
+                    OpCode::ADD => self.binary_op(|a, b| a + b)?,
+                    OpCode::SUBTRACT => self.binary_op(|a, b| a - b)?,
+                    OpCode::MULTIPLY => self.binary_op(|a, b| a * b)?,
+                    OpCode::DIVIDE => self.binary_op(|a, b| a / b)?,
+                    OpCode::NIL => self.push_value(ValueType::Nil),
+                    OpCode::FALSE => self.push_value(ValueType::Bool(false)),
+                    OpCode::TRUE => self.push_value(ValueType::Bool(true)),
+                    OpCode::NOT => {
+                        if let Some(bool_val) = self.pop_value() {
+                            self.push_value(ValueType::Bool(bool_val.is_falsey()));
+                        }
+                    }
                 },
-                Err(e) => Err(e)?
+                Err(e) => Err(e)?,
             }
         }
     }
@@ -94,22 +104,24 @@ impl VM{
         panic!("[Read Byte] no chunk in vm to read!");
     }
 
-    fn binary_op<F>(&mut self, op: F) -> InterpretResult 
-        where F: Fn(f64, f64) -> f64 {
-            match (self.pop_value(), self.pop_value()) {
-                (Some(ValueType::Number(b)), Some(ValueType::Number(a))) => {
-                    self.push_value(ValueType::Number(op(a, b)));
-                    Ok(())
-                }
-                (Some(_), Some(_)) => {
-                    eprintln!("Operands must be numbers.");
-                    InterpretResult::Err(InterpretError::RuntimeError)
-                }
-                _ => {
-                    eprintln!("Stack underflow.");
-                    InterpretResult::Err(InterpretError::RuntimeError)
-                }
+    fn binary_op<F>(&mut self, op: F) -> InterpretResult
+    where
+        F: Fn(f64, f64) -> f64,
+    {
+        match (self.pop_value(), self.pop_value()) {
+            (Some(ValueType::Number(b)), Some(ValueType::Number(a))) => {
+                self.push_value(ValueType::Number(op(a, b)));
+                Ok(())
             }
+            (Some(_), Some(_)) => {
+                eprintln!("Operands must be numbers.");
+                InterpretResult::Err(InterpretError::RuntimeError)
+            }
+            _ => {
+                eprintln!("Stack underflow.");
+                InterpretResult::Err(InterpretError::RuntimeError)
+            }
+        }
     }
 
     fn negate_op(&mut self) -> InterpretResult {
@@ -118,7 +130,7 @@ impl VM{
                 ValueType::Number(num) => {
                     *num = -*num;
                     return Ok(());
-                },
+                }
                 _ => return Err(InterpretError::RuntimeError),
             }
         }

@@ -10,7 +10,7 @@ impl Token {
         Token {
             token_type,
             line,
-            lexeme: lexeme,
+            lexeme,
         }
     }
 }

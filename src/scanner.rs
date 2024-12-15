@@ -1,6 +1,5 @@
-use core::str;
-
 use crate::token::{Token, TokenType};
+use core::str;
 
 #[derive(Debug, PartialEq)]
 pub struct Scanner<'a> {
@@ -25,7 +24,7 @@ impl<'a> Scanner<'a> {
             if let Ok(str_value) = std::str::from_utf8(&self.source[start..=end]) {
                 str_value.parse::<f64>().ok()
             } else {
-                None 
+                None
             }
         } else {
             None
@@ -43,42 +42,42 @@ impl<'a> Scanner<'a> {
         let character = self.advance();
 
         match character {
-            '(' => return self.make_token(TokenType::LEFTPAREN),
-            ')' => return self.make_token(TokenType::RIGHTPAREN),
-            '{' => return self.make_token(TokenType::LEFTBRACE),
-            '}' => return self.make_token(TokenType::RIGHTBRACE),
-            ';' => return self.make_token(TokenType::SEMICOLON),
-            ',' => return self.make_token(TokenType::COMMA),
-            '.' => return self.make_token(TokenType::DOT),
-            '-' => return self.make_token(TokenType::MINUS),
-            '+' => return self.make_token(TokenType::PLUS),
-            '/' => return self.make_token(TokenType::SLASH),
-            '*' => return self.make_token(TokenType::STAR),
+            '(' => self.make_token(TokenType::LEFTPAREN),
+            ')' => self.make_token(TokenType::RIGHTPAREN),
+            '{' => self.make_token(TokenType::LEFTBRACE),
+            '}' => self.make_token(TokenType::RIGHTBRACE),
+            ';' => self.make_token(TokenType::SEMICOLON),
+            ',' => self.make_token(TokenType::COMMA),
+            '.' => self.make_token(TokenType::DOT),
+            '-' => self.make_token(TokenType::MINUS),
+            '+' => self.make_token(TokenType::PLUS),
+            '/' => self.make_token(TokenType::SLASH),
+            '*' => self.make_token(TokenType::STAR),
             '!' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::BANGEQUAL);
                 }
-                return self.make_token(TokenType::BANG);
-            },
+                self.make_token(TokenType::BANG)
+            }
             '=' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::EQUALEQUAL);
                 }
-                return self.make_token(TokenType::EQUAL);
-            },
+                self.make_token(TokenType::EQUAL)
+            }
             '<' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::LESSEQUAL);
                 }
-                return self.make_token(TokenType::LESS);
-            },
+                self.make_token(TokenType::LESS)
+            }
             '>' => {
                 if self.match_token('=') {
                     return self.make_token(TokenType::GREATEREQUAL);
                 }
-                return self.make_token(TokenType::GREATEREQUAL);
-            },
-            '"' => return self.match_string(),
+                self.make_token(TokenType::GREATEREQUAL)
+            }
+            '"' => self.match_string(),
             '0'..='9' => self.match_number(),
             'a'..='z' | 'A'..='Z' | '_' => {
                 while self.peek().is_ascii_alphabetic()
@@ -87,9 +86,9 @@ impl<'a> Scanner<'a> {
                 {
                     self.advance();
                 }
-                return self.identifier_type();
-            },
-            _ => return self.error_token("Unexpected character.".to_string()),
+                self.identifier_type()
+            }
+            _ => self.error_token("Unexpected character.".to_string()),
         }
     }
 
@@ -128,7 +127,7 @@ impl<'a> Scanner<'a> {
                         'a' => self.check_keyword(2, 3, "lse", TokenType::FALSE),
                         'o' => self.check_keyword(2, 1, "r", TokenType::FOR),
                         'u' => self.check_keyword(2, 1, "n", TokenType::FUN),
-                        _ => self.make_token(TokenType::IDENTIFIER)
+                        _ => self.make_token(TokenType::IDENTIFIER),
                     }
                 } else {
                     self.make_token(TokenType::IDENTIFIER)
@@ -145,7 +144,7 @@ impl<'a> Scanner<'a> {
                     match self.source[self.start + 1] as char {
                         'h' => self.check_keyword(2, 2, "is", TokenType::THIS),
                         'r' => self.check_keyword(2, 2, "ue", TokenType::TRUE),
-                        _ => self.make_token(TokenType::IDENTIFIER)
+                        _ => self.make_token(TokenType::IDENTIFIER),
                     }
                 } else {
                     self.make_token(TokenType::IDENTIFIER)
@@ -153,11 +152,17 @@ impl<'a> Scanner<'a> {
             }
             'v' => self.check_keyword(1, 2, "ar", TokenType::VAR),
             'w' => self.check_keyword(1, 4, "hile", TokenType::WHILE),
-            _ => self.make_token(TokenType::IDENTIFIER)
+            _ => self.make_token(TokenType::IDENTIFIER),
         }
     }
 
-    fn check_keyword(&mut self, start: usize, length: usize, rest: &str, token_type: TokenType) -> Token {
+    fn check_keyword(
+        &mut self,
+        start: usize,
+        length: usize,
+        rest: &str,
+        token_type: TokenType,
+    ) -> Token {
         let slice = &self.source[self.start + start..self.start + start + length];
         if let Ok(slice_str) = std::str::from_utf8(slice) {
             if self.current - self.start == start + length && slice_str == rest {
@@ -232,12 +237,15 @@ impl<'a> Scanner<'a> {
     }
 
     fn make_token(&mut self, token_type: TokenType) -> Token {
-        assert!(self.start <= self.current, "Invalid slice bounds in Scanner");
+        assert!(
+            self.start <= self.current,
+            "Invalid slice bounds in Scanner"
+        );
         let (start, end) = match token_type {
             TokenType::STRING => (self.start + 1, self.current - 1),
-            _ => (self.start, self.current)
+            _ => (self.start, self.current),
         };
-        
+
         let lexeme = match str::from_utf8(&self.source[start..end]) {
             Ok(s) => s.to_string(),
             Err(e) => return self.error_token(e.to_string()),

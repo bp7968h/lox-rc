@@ -3,21 +3,21 @@ use crate::InterpretError;
 #[derive(Debug, PartialEq, Clone)]
 #[repr(u8)]
 pub enum OpCode {
-  CONSTANT,
-  NEGATE,
-  RETURN,
-  ADD,
-  SUBTRACT,
-  MULTIPLY,
-  DIVIDE,
-  NIL,
-  TRUE,
-  FALSE,
-  NOT
+    CONSTANT,
+    NEGATE,
+    RETURN,
+    ADD,
+    SUBTRACT,
+    MULTIPLY,
+    DIVIDE,
+    NIL,
+    TRUE,
+    FALSE,
+    NOT,
 }
 
 impl TryFrom<u8> for OpCode {
-    type Error = InterpretError ;
+    type Error = InterpretError;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(OpCode::CONSTANT),
@@ -31,8 +31,8 @@ impl TryFrom<u8> for OpCode {
             8 => Ok(OpCode::TRUE),
             9 => Ok(OpCode::FALSE),
             10 => Ok(OpCode::NOT),
-            _ => Err(InterpretError::CompileError)
-          }
+            _ => Err(InterpretError::CompileError),
+        }
     }
 }
 

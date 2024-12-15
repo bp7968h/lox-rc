@@ -3,9 +3,9 @@ use crate::{
     debug::disassemble_chunk,
     opcode::OpCode,
     scanner::Scanner,
-    token::{Token, TokenType}, value::ValueType,
+    token::{Token, TokenType},
+    value::ValueType,
 };
-use std::u8;
 
 pub struct Compiler<'scanner, 'chunk> {
     scanner: Scanner<'scanner>,
@@ -14,7 +14,7 @@ pub struct Compiler<'scanner, 'chunk> {
     had_error: bool,
     panic_mode: bool,
     chunk: &'chunk mut Chunk,
-    debug: bool
+    debug: bool,
 }
 
 impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
@@ -53,7 +53,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.expression();
         self.consume(TokenType::EOF, "Expect end of expression.");
         self.end_compiler();
-        
+
         !self.had_error
     }
 
@@ -111,7 +111,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             match operator_type.token_type {
                 TokenType::MINUS => self.emit_byte(OpCode::NEGATE as u8),
                 TokenType::BANG => self.emit_byte(OpCode::NOT as u8),
-                _ => return,
+                _ => (),
             }
         }
     }
@@ -138,7 +138,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                 TokenType::FALSE => self.emit_byte(OpCode::FALSE as u8),
                 TokenType::NIL => self.emit_byte(OpCode::NIL as u8),
                 TokenType::TRUE => self.emit_byte(OpCode::TRUE as u8),
-                _ => return // unreachable!()
+                _ => (), // unreachable!()
             }
         }
     }
@@ -147,19 +147,23 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.advance();
         //println!("PrsPre Fn - Prev: {:?}, Curr: {:?}", self.previous, self.current);
         if let Some(prev_token) = self.previous.as_ref() {
-            match Self::get_rule(prev_token.token_type.clone()).prefix {
+            match Self::get_rule(prev_token.token_type).prefix {
                 Some(prefix_rule) => {
                     prefix_rule(self);
-                    while precedence as u8 <= Self::get_rule(self.current.as_ref().unwrap().clone().token_type).precedence as u8 {
+                    while precedence as u8
+                        <= Self::get_rule(self.current.as_ref().unwrap().clone().token_type)
+                            .precedence as u8
+                    {
                         self.advance();
-                        if let Some(infix_rule) = Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).infix {
+                        if let Some(infix_rule) =
+                            Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).infix
+                        {
                             infix_rule(self);
                         }
                     }
-                },
+                }
                 None => {
                     self.error("Expect expression");
-                    return;
                 }
             }
         }
@@ -194,10 +198,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn end_compiler(&mut self) {
         self.emit_return();
-        if self.debug {
-            if !self.had_error {
-                disassemble_chunk(&self.chunk, "code");
-            }
+        if self.debug && !self.had_error {
+            disassemble_chunk(self.chunk, "code");
         }
     }
 
