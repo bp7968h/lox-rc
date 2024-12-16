@@ -14,6 +14,9 @@ pub enum OpCode {
     TRUE,
     FALSE,
     NOT,
+    EQUAL,
+    GREATER,
+    LESS,
 }
 
 impl TryFrom<u8> for OpCode {
@@ -31,6 +34,9 @@ impl TryFrom<u8> for OpCode {
             8 => Ok(OpCode::TRUE),
             9 => Ok(OpCode::FALSE),
             10 => Ok(OpCode::NOT),
+            11 => Ok(OpCode::EQUAL),
+            12 => Ok(OpCode::GREATER),
+            13 => Ok(OpCode::LESS),
             _ => Err(InterpretError::CompileError),
         }
     }

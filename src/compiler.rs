@@ -123,6 +123,12 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             let next_precedence = Precedence::from(rule.precedence as u8 + 1);
             self.parse_precedence(next_precedence);
             match operator_type {
+                TokenType::BANGEQUAL => self.emit_bytes(OpCode::EQUAL as u8, OpCode::NOT as u8),
+                TokenType::EQUALEQUAL => self.emit_byte(OpCode::EQUAL as u8),
+                TokenType::GREATER => self.emit_byte(OpCode::GREATER as u8),
+                TokenType::GREATEREQUAL => self.emit_bytes(OpCode::LESS as u8, OpCode::NOT as u8),
+                TokenType::LESS => self.emit_byte(OpCode::LESS as u8),
+                TokenType::LESSEQUAL => self.emit_bytes(OpCode::GREATER as u8, OpCode::NOT as u8),
                 TokenType::PLUS => self.emit_byte(OpCode::ADD as u8),
                 TokenType::MINUS => self.emit_byte(OpCode::SUBTRACT as u8),
                 TokenType::STAR => self.emit_byte(OpCode::MULTIPLY as u8),
@@ -269,13 +275,25 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::SLASH => ParseRule::new(None, Some(Self::parse_binary), Precedence::FACTOR),
             TokenType::STAR => ParseRule::new(None, Some(Self::parse_binary), Precedence::FACTOR),
             TokenType::BANG => ParseRule::new(Some(Self::parse_unary), None, Precedence::NONE),
-            TokenType::BANGEQUAL => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::BANGEQUAL => {
+                ParseRule::new(None, Some(Self::parse_binary), Precedence::EQUALITY)
+            }
             TokenType::EQUAL => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::EQUALEQUAL => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::GREATER => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::GREATEREQUAL => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::LESS => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::LESSEQUAL => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::EQUALEQUAL => {
+                ParseRule::new(None, Some(Self::parse_binary), Precedence::EQUALITY)
+            }
+            TokenType::GREATER => {
+                ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
+            }
+            TokenType::GREATEREQUAL => {
+                ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
+            }
+            TokenType::LESS => {
+                ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
+            }
+            TokenType::LESSEQUAL => {
+                ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
+            }
             TokenType::IDENTIFIER => ParseRule::new(None, None, Precedence::NONE),
             TokenType::STRING => ParseRule::new(None, None, Precedence::NONE),
             TokenType::NUMBER => ParseRule::new(Some(Self::parse_number), None, Precedence::NONE),

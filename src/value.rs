@@ -1,6 +1,8 @@
 use std::fmt;
 
-#[derive(Debug, PartialEq, Copy, Clone)]
+use crate::InterpretError;
+
+#[derive(Debug, Copy, Clone)]
 pub enum ValueType {
     Bool(bool),
     Nil,
@@ -23,6 +25,75 @@ impl ValueType {
             ValueType::Nil => true,
             ValueType::Bool(b) => !b,
             _ => false,
+        }
+    }
+}
+
+// This is need to use the ==
+impl PartialEq for ValueType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ValueType::Bool(a), ValueType::Bool(b)) => a == b,
+            (ValueType::Nil, ValueType::Nil) => true,
+            (ValueType::Number(a), ValueType::Number(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+// This is required to use > and <.
+// Also PartialEq is should also be implemented to implement this
+impl PartialOrd for ValueType {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (ValueType::Number(a), ValueType::Number(b)) => a.partial_cmp(b),
+            _ => None,
+        }
+    }
+}
+
+use std::ops::{Add, Div, Mul, Sub};
+
+impl Add for ValueType {
+    type Output = Result<Self, InterpretError>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (ValueType::Number(a), ValueType::Number(b)) => Ok(ValueType::Number(a + b)),
+            _ => Err(InterpretError::RuntimeError),
+        }
+    }
+}
+
+impl Sub for ValueType {
+    type Output = Result<Self, InterpretError>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (ValueType::Number(a), ValueType::Number(b)) => Ok(ValueType::Number(a - b)),
+            _ => Err(InterpretError::RuntimeError),
+        }
+    }
+}
+
+impl Mul for ValueType {
+    type Output = Result<Self, InterpretError>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (ValueType::Number(a), ValueType::Number(b)) => Ok(ValueType::Number(a * b)),
+            _ => Err(InterpretError::RuntimeError),
+        }
+    }
+}
+
+impl Div for ValueType {
+    type Output = Result<Self, InterpretError>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (ValueType::Number(a), ValueType::Number(b)) => Ok(ValueType::Number(a / b)),
+            _ => Err(InterpretError::RuntimeError),
         }
     }
 }

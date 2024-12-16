@@ -79,6 +79,15 @@ impl VM {
                             self.push_value(ValueType::Bool(bool_val.is_falsey()));
                         }
                     }
+                    OpCode::EQUAL => match (self.pop_value(), self.pop_value()) {
+                        (Some(b), Some(a)) => {
+                            let is_equal = a == b;
+                            self.push_value(ValueType::Bool(is_equal));
+                        }
+                        _ => return Err(InterpretError::RuntimeError),
+                    },
+                    OpCode::GREATER => self.binary_cmp(|a, b| a > b)?,
+                    OpCode::LESS => self.binary_cmp(|a, b| a < b)?,
                 },
                 Err(e) => Err(e)?,
             }
@@ -106,22 +115,30 @@ impl VM {
 
     fn binary_op<F>(&mut self, op: F) -> InterpretResult
     where
-        F: Fn(f64, f64) -> f64,
+        F: Fn(ValueType, ValueType) -> Result<ValueType, InterpretError>,
     {
-        match (self.pop_value(), self.pop_value()) {
-            (Some(ValueType::Number(b)), Some(ValueType::Number(a))) => {
-                self.push_value(ValueType::Number(op(a, b)));
-                Ok(())
-            }
-            (Some(_), Some(_)) => {
-                eprintln!("Operands must be numbers.");
-                InterpretResult::Err(InterpretError::RuntimeError)
-            }
-            _ => {
-                eprintln!("Stack underflow.");
-                InterpretResult::Err(InterpretError::RuntimeError)
+        if let (Some(v_b), Some(v_a)) = (self.pop_value(), self.pop_value()) {
+            match op(v_a, v_b) {
+                Ok(v) => {
+                    self.push_value(v);
+                    return Ok(());
+                }
+                Err(e) => Err(e)?,
             }
         }
+        Err(InterpretError::RuntimeError)
+    }
+
+    fn binary_cmp<F>(&mut self, op: F) -> InterpretResult
+    where
+        F: Fn(ValueType, ValueType) -> bool,
+    {
+        if let (Some(v_b), Some(v_a)) = (self.pop_value(), self.pop_value()) {
+            let cmp_result = op(v_a, v_b);
+            self.push_value(ValueType::Bool(cmp_result));
+            return Ok(());
+        }
+        Err(InterpretError::RuntimeError)
     }
 
     fn negate_op(&mut self) -> InterpretResult {
