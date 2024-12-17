@@ -6,6 +6,7 @@ use crate::{
     token::{Token, TokenType},
     value::ValueType,
 };
+use std::default::Default;
 
 pub struct Compiler<'scanner, 'chunk> {
     scanner: Scanner<'scanner>,
@@ -260,25 +261,25 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::LEFTPAREN => {
                 ParseRule::new(Some(Self::parse_grouping), None, Precedence::NONE)
             }
-            TokenType::RIGHTPAREN => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::LEFTBRACE => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::RIGHTBRACE => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::COMMA => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::DOT => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::RIGHTPAREN => ParseRule::default(),
+            TokenType::LEFTBRACE => ParseRule::default(),
+            TokenType::RIGHTBRACE => ParseRule::default(),
+            TokenType::COMMA => ParseRule::default(),
+            TokenType::DOT => ParseRule::default(),
             TokenType::MINUS => ParseRule::new(
                 Some(Self::parse_unary),
                 Some(Self::parse_binary),
                 Precedence::TERM,
             ),
             TokenType::PLUS => ParseRule::new(None, Some(Self::parse_binary), Precedence::TERM),
-            TokenType::SEMICOLON => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::SEMICOLON => ParseRule::default(),
             TokenType::SLASH => ParseRule::new(None, Some(Self::parse_binary), Precedence::FACTOR),
             TokenType::STAR => ParseRule::new(None, Some(Self::parse_binary), Precedence::FACTOR),
             TokenType::BANG => ParseRule::new(Some(Self::parse_unary), None, Precedence::NONE),
             TokenType::BANGEQUAL => {
                 ParseRule::new(None, Some(Self::parse_binary), Precedence::EQUALITY)
             }
-            TokenType::EQUAL => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::EQUAL => ParseRule::default(),
             TokenType::EQUALEQUAL => {
                 ParseRule::new(None, Some(Self::parse_binary), Precedence::EQUALITY)
             }
@@ -294,27 +295,27 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::LESSEQUAL => {
                 ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
             }
-            TokenType::IDENTIFIER => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::STRING => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::IDENTIFIER => ParseRule::default(),
+            TokenType::STRING => ParseRule::default(),
             TokenType::NUMBER => ParseRule::new(Some(Self::parse_number), None, Precedence::NONE),
-            TokenType::AND => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::CLASS => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::ELSE => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::AND => ParseRule::default(),
+            TokenType::CLASS => ParseRule::default(),
+            TokenType::ELSE => ParseRule::default(),
             TokenType::FALSE => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
-            TokenType::FOR => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::FUN => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::IF => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::FOR => ParseRule::default(),
+            TokenType::FUN => ParseRule::default(),
+            TokenType::IF => ParseRule::default(),
             TokenType::NIL => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
-            TokenType::OR => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::PRINT => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::RETURN => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::SUPER => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::THIS => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::OR => ParseRule::default(),
+            TokenType::PRINT => ParseRule::default(),
+            TokenType::RETURN => ParseRule::default(),
+            TokenType::SUPER => ParseRule::default(),
+            TokenType::THIS => ParseRule::default(),
             TokenType::TRUE => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
-            TokenType::VAR => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::WHILE => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::ERROR => ParseRule::new(None, None, Precedence::NONE),
-            TokenType::EOF => ParseRule::new(None, None, Precedence::NONE),
+            TokenType::VAR => ParseRule::default(),
+            TokenType::WHILE => ParseRule::default(),
+            TokenType::ERROR => ParseRule::default(),
+            TokenType::EOF => ParseRule::default(),
         }
     }
 }
@@ -341,6 +342,16 @@ impl<'scanner, 'chunk> ParseRule<'scanner, 'chunk> {
     }
 }
 
+impl<'scanner, 'chunk> Default for ParseRule<'scanner, 'chunk> {
+    fn default() -> Self {
+        ParseRule {
+            prefix: None,
+            infix: None,
+            precedence: Precedence::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum Precedence {
@@ -355,6 +366,12 @@ pub enum Precedence {
     UNARY,      // ! -
     CALL,       // . ()
     PRIMARY,
+}
+
+impl Default for Precedence {
+    fn default() -> Self {
+        Precedence::NONE
+    }
 }
 
 impl From<u8> for Precedence {
