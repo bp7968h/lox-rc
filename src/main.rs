@@ -1,5 +1,5 @@
-use jlox_rc::vm::VM;
-use jlox_rc::InterpretError;
+use lox_rc::vm::VM;
+use lox_rc::InterpretError;
 use std::env;
 use std::fs;
 use std::process;
