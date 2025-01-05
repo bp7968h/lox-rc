@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::object::Object;
 use crate::InterpretError;
 
 #[derive(Debug, Copy, Clone)]
@@ -7,6 +8,7 @@ pub enum ValueType {
     Bool(bool),
     Nil,
     Number(f64),
+    Object,
 }
 
 impl fmt::Display for ValueType {
@@ -15,6 +17,9 @@ impl fmt::Display for ValueType {
             ValueType::Bool(b) => write!(f, "{}", b),
             ValueType::Nil => write!(f, "nil"),
             ValueType::Number(n) => write!(f, "{}", n),
+            o @ ValueType::Object => {
+                write!(f, "{}", o)
+            }
         }
     }
 }
