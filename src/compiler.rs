@@ -28,11 +28,30 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     pub fn compile(&mut self) -> bool {
         self.advance();
-        self.expression();
-        self.consume(TokenType::EOF, "Expect end of expression.");
+        // self.expression();
+        // self.consume(TokenType::EOF, "Expect end of expression.");
+        while !self.match_token(TokenType::EOF) {
+            self.declaration()
+        }
         self.end_compiler();
 
         !self.had_error
+    }
+
+    fn declaration(&mut self) {
+        self.statement();
+    }
+
+    fn statement(&mut self) {
+        if self.match_token(TokenType::PRINT) {
+            self.print_statement();
+        }
+    }
+
+    fn print_statement(&mut self) {
+        self.expression();
+        self.consume(TokenType::SEMICOLON, "Expect ';' after value.");
+        self.emit_byte(OpCode::PRINT.into());
     }
 
     fn advance(&mut self) {
@@ -197,6 +216,24 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn emit_return(&mut self) {
         self.emit_byte(OpCode::RETURN as u8);
+    }
+
+    /// Checks if the current token doesn't matches the returnds false
+    /// Otherwise, advances the compiler
+    fn match_token(&mut self, expected_token: TokenType) -> bool {
+        if !self.check_token(expected_token) {
+            return false;
+        }
+        self.advance();
+        true
+    }
+
+    /// Check if the current token (token_type) matches
+    fn check_token(&mut self, expected_token: TokenType) -> bool {
+        if let Some(curr_token) = self.current.as_ref() {
+            return curr_token.token_type == expected_token;
+        }
+        false
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) {

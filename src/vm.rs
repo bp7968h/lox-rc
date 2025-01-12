@@ -57,9 +57,6 @@ impl VM {
             match OpCode::try_from(instruction) {
                 Ok(opcode) => match opcode {
                     OpCode::RETURN => {
-                        if let Some(stack_value) = self.pop_value() {
-                            println!("{}", stack_value);
-                        }
                         return Ok(());
                     }
                     OpCode::CONSTANT => {
@@ -88,6 +85,11 @@ impl VM {
                     },
                     OpCode::GREATER => self.binary_cmp(|a, b| a > b)?,
                     OpCode::LESS => self.binary_cmp(|a, b| a < b)?,
+                    OpCode::PRINT => {
+                        if let Some(print_value) = self.pop_value() {
+                            println!("{}", print_value);
+                        }
+                    }
                 },
                 Err(e) => Err(e)?,
             }

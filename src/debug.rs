@@ -40,6 +40,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
             OpCode::EQUAL => simple_instruction("OP_EQUAL", offset),
             OpCode::GREATER => simple_instruction("OP_GREATER", offset),
             OpCode::LESS => simple_instruction("OP_LESS", offset),
+            OpCode::PRINT => simple_instruction("OP_PRINT", offset),
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");
