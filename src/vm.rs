@@ -89,6 +89,9 @@ impl VM {
                         if let Some(print_value) = self.pop_value() {
                             println!("{}", print_value);
                         }
+                    },
+                    OpCode::POP => {
+                        let _  = self.pop_value();
                     }
                 },
                 Err(e) => Err(e)?,

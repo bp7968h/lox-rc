@@ -40,11 +40,41 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn declaration(&mut self) {
         self.statement();
+
+        if self.panic_mode {
+            self.synchronize();
+        }
     }
 
     fn statement(&mut self) {
         if self.match_token(TokenType::PRINT) {
             self.print_statement();
+        } else {
+            self.expression_statement();
+        }
+    }
+
+    fn synchronize(&mut self) {
+        self.panic_mode = false;
+
+        if let Some(curr_token) = self.current.take() {
+            while curr_token.token_type != TokenType::EOF {
+                if let Some(prev_token) = self.previous.as_ref() {
+                    if prev_token.token_type == TokenType::SEMICOLON {
+                        return;
+                    }
+                }
+
+                match curr_token.token_type {
+                    TokenType::CLASS | TokenType::FUN |
+                    TokenType::VAR | TokenType::FOR |
+                    TokenType::IF | TokenType::WHILE |
+                    TokenType::PRINT | TokenType::RETURN => return,
+                    _ => ()
+                }
+
+                self.advance();
+            }
         }
     }
 
@@ -52,6 +82,12 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.expression();
         self.consume(TokenType::SEMICOLON, "Expect ';' after value.");
         self.emit_byte(OpCode::PRINT.into());
+    }
+
+    fn expression_statement(&mut self) {
+        self.expression();
+        self.consume(TokenType::SEMICOLON, "Expect ';' after expression.");
+        self.emit_byte(OpCode::POP.into());
     }
 
     fn advance(&mut self) {

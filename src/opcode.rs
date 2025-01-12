@@ -18,6 +18,7 @@ pub enum OpCode {
     GREATER,
     LESS,
     PRINT,
+    POP,
 }
 
 impl TryFrom<u8> for OpCode {
@@ -39,6 +40,7 @@ impl TryFrom<u8> for OpCode {
             12 => Ok(OpCode::GREATER),
             13 => Ok(OpCode::LESS),
             14 => Ok(OpCode::PRINT),
+            15 => Ok(OpCode::POP),
             _ => Err(InterpretError::CompileError),
         }
     }
