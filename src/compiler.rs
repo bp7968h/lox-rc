@@ -1,10 +1,5 @@
 use crate::{
-    chunk::Chunk,
-    debug::disassemble_chunk,
-    opcode::OpCode,
-    scanner::Scanner,
-    token::{Token, TokenType},
-    value::ValueType,
+    chunk::Chunk, debug::disassemble_chunk, object::{Object, ObjectType}, opcode::OpCode, scanner::Scanner, token::{Token, TokenType}, value::ValueType
 };
 use std::default::Default;
 
@@ -31,24 +26,6 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    // pub fn compile(&mut self) {
-    //     let mut line: usize = 0;
-    //     loop {
-    //         let token: Token = self.scanner.scan_token();
-    //         if token.line != line {
-    //             print!("{:4} ", token.line);
-    //             line = token.line;
-    //         } else {
-    //             print!("   | ");
-    //         }
-    //         println!("{:?} '{}'", token.token_type, token.lexeme);
-
-    //         if token.token_type == TokenType::EOF {
-    //             break;
-    //         }
-    //     }
-    // }
-
     pub fn compile(&mut self) -> bool {
         self.advance();
         self.expression();
@@ -60,10 +37,10 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn advance(&mut self) {
         self.previous = self.current.take();
-        //println!(
+        // println!(
         //    "Advance Fn - Prev {:?}, Curr {:?}",
         //    self.previous, self.current
-        //);
+        // );
 
         loop {
             let scanned_token = self.scanner.scan_token();
@@ -173,6 +150,14 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                     self.error("Expect expression");
                 }
             }
+        }
+    }
+
+    fn parse_string(&mut self) {
+        if let Some(prev_token) = self.previous.as_mut() {
+            let str_value = std::mem::take(&mut prev_token.lexeme);
+            let str_obj = ObjectType::ObjString(str_value);
+            self.emit_constant(ValueType::Obj(Object::new(str_obj)));
         }
     }
 
@@ -296,7 +281,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                 ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
             }
             TokenType::IDENTIFIER => ParseRule::default(),
-            TokenType::STRING => ParseRule::default(),
+            TokenType::STRING => ParseRule { prefix: Some(Self::parse_string), infix: None, precedence: Precedence::NONE },
             TokenType::NUMBER => ParseRule::new(Some(Self::parse_number), None, Precedence::NONE),
             TokenType::AND => ParseRule::default(),
             TokenType::CLASS => ParseRule::default(),

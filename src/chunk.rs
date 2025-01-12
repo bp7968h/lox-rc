@@ -44,7 +44,7 @@ impl Chunk {
 
     pub fn get_constant(&self, idx: usize) -> ValueType {
         if idx < self.constants.len() {
-            return self.constants[idx];
+            return self.constants[idx].clone();
         }
         panic!("[Chunk-Constant] Offset is higher than line count");
     }

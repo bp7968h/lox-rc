@@ -3,12 +3,12 @@ use std::fmt;
 use crate::object::Object;
 use crate::InterpretError;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum ValueType {
     Bool(bool),
     Nil,
     Number(f64),
-    Object,
+    Obj(Object),
 }
 
 impl fmt::Display for ValueType {
@@ -17,7 +17,7 @@ impl fmt::Display for ValueType {
             ValueType::Bool(b) => write!(f, "{}", b),
             ValueType::Nil => write!(f, "nil"),
             ValueType::Number(n) => write!(f, "{}", n),
-            o @ ValueType::Object => {
+            ValueType::Obj(o) => {
                 write!(f, "{}", o)
             }
         }
@@ -32,6 +32,13 @@ impl ValueType {
             _ => false,
         }
     }
+
+    pub fn is_obj_type(&self) -> bool {
+        match self {
+            ValueType::Obj(_) => true,
+            _ => false,
+        }
+    }
 }
 
 // This is need to use the ==
@@ -41,6 +48,7 @@ impl PartialEq for ValueType {
             (ValueType::Bool(a), ValueType::Bool(b)) => a == b,
             (ValueType::Nil, ValueType::Nil) => true,
             (ValueType::Number(a), ValueType::Number(b)) => a == b,
+            (ValueType::Obj(a), ValueType::Obj(b)) => a == b,
             _ => false,
         }
     }
@@ -65,6 +73,7 @@ impl Add for ValueType {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (ValueType::Number(a), ValueType::Number(b)) => Ok(ValueType::Number(a + b)),
+            (ValueType::Obj(a), ValueType::Obj(b)) => Ok(ValueType::Obj((a + b)?)),
             _ => Err(InterpretError::RuntimeError),
         }
     }

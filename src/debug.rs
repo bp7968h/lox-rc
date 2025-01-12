@@ -24,7 +24,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
     }
 
     let instruction = chunk.op_codes_at(*offset);
-    match OpCode::try_from(instruction) {
+    match OpCode::try_from(instruction) {  
         Ok(o) => match o {
             OpCode::CONSTANT => constant_instruction("OP_CONSTANT", chunk, offset),
             OpCode::NEGATE => simple_instruction("OP_NEGATE", offset),
@@ -56,7 +56,7 @@ fn simple_instruction(instruction_name: &str, offset: &usize) -> usize {
 fn constant_instruction(instruction_name: &str, chunk: &Chunk, offset: &usize) -> usize {
     let constant_idx = chunk.op_codes_at(*offset + 1);
     print!("{:<16} {:4} ", instruction_name, constant_idx);
-    println!("'{:?}'", &chunk.get_constant(constant_idx as usize));
+    println!("'{}'", &chunk.get_constant(constant_idx as usize));
 
     *offset + 2
 }
