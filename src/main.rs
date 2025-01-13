@@ -12,7 +12,7 @@ fn main() {
                 if env::var("DEBUG").is_ok() {
                     vm.set_debug(true);
                 }
-                
+
                 match vm.interpret(&content) {
                     Ok(_) => (),
                     Err(e) => match e {

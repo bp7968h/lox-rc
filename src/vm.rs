@@ -120,6 +120,18 @@ impl VM {
                             return Err(InterpretError::RuntimeError);
                         }
                     }
+                    OpCode::SetGlobal => {
+                        let constant_name = self.read_constant().to_string();
+                        if let Some(identifier_name) = self.peek(0) {
+                            let value_to_update = identifier_name.to_owned();
+                            match self.globals.get_mut(&constant_name) {
+                                Some(value) => {
+                                    *value = value_to_update;
+                                }
+                                None => return Err(InterpretError::RuntimeError),
+                            }
+                        }
+                    }
                 },
                 Err(e) => Err(e)?,
             }

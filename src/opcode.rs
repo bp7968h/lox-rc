@@ -21,6 +21,7 @@ pub enum OpCode {
     POP,
     DefineGlobal,
     GetGlobal,
+    SetGlobal,
 }
 
 impl TryFrom<u8> for OpCode {
@@ -45,6 +46,7 @@ impl TryFrom<u8> for OpCode {
             15 => Ok(OpCode::POP),
             16 => Ok(OpCode::DefineGlobal),
             17 => Ok(OpCode::GetGlobal),
+            18 => Ok(OpCode::SetGlobal),
             _ => Err(InterpretError::CompileError),
         }
     }

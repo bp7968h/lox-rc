@@ -44,6 +44,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
             OpCode::POP => simple_instruction("OP_POP", offset),
             OpCode::DefineGlobal => constant_instruction("OP_DEFINE_GLOBAL", chunk, offset),
             OpCode::GetGlobal => constant_instruction("OP_GET_GLOBAL", chunk, offset),
+            OpCode::SetGlobal => constant_instruction("OP_SET_GLOBAL", chunk, offset),
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");

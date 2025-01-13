@@ -94,7 +94,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                             return;
                         }
                     }
-    
+
                     match curr_token.token_type {
                         TokenType::CLASS
                         | TokenType::FUN
@@ -169,7 +169,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.emit_bytes(OpCode::DefineGlobal.into(), global);
     }
 
-    fn parse_number(&mut self) {
+    fn parse_number(&mut self, _can_assign: bool) {
         if let Some(prev_token) = self.previous.as_ref() {
             match prev_token.lexeme.parse::<f64>() {
                 Ok(num_value) => {
@@ -184,12 +184,12 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn parse_grouping(&mut self) {
+    fn parse_grouping(&mut self, _can_assign: bool) {
         self.expression();
         self.consume(TokenType::RIGHTPAREN, "Expect ')' after expression.");
     }
 
-    fn parse_unary(&mut self) {
+    fn parse_unary(&mut self, _can_assign: bool) {
         if let Some(operator_type) = self.previous.take() {
             self.parse_precedence(Precedence::UNARY);
             match operator_type.token_type {
@@ -200,7 +200,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn parse_binary(&mut self) {
+    fn parse_binary(&mut self, _can_assign: bool) {
         if let Some(operator) = self.previous.take() {
             let operator_type = &operator.token_type;
             let rule = Self::get_rule(*operator_type);
@@ -222,7 +222,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn parse_literal(&mut self) {
+    fn parse_literal(&mut self, _can_assign: bool) {
         if let Some(token) = self.previous.as_ref() {
             match token.token_type {
                 TokenType::FALSE => self.emit_byte(OpCode::FALSE as u8),
@@ -235,11 +235,12 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.advance();
-        //println!("PrsPre Fn - Prev: {:?}, Curr: {:?}", self.previous, self.current);
+
         if let Some(prev_token) = self.previous.as_ref() {
             match Self::get_rule(prev_token.token_type).prefix {
                 Some(prefix_rule) => {
-                    prefix_rule(self);
+                    let can_assign = precedence as u8 <= Precedence::ASSIGNMENT as u8;
+                    prefix_rule(self, can_assign);
                     while precedence as u8
                         <= Self::get_rule(self.current.as_ref().unwrap().clone().token_type)
                             .precedence as u8
@@ -248,7 +249,10 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                         if let Some(infix_rule) =
                             Self::get_rule(self.previous.as_ref().unwrap().clone().token_type).infix
                         {
-                            infix_rule(self);
+                            infix_rule(self, can_assign);
+                        }
+                        if can_assign && self.match_token(TokenType::EQUAL) {
+                            self.error("Invalid assignment target.");
                         }
                     }
                 }
@@ -259,7 +263,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn string(&mut self) {
+    fn string(&mut self, _can_assign: bool) {
         if let Some(prev_token) = self.previous.as_mut() {
             let str_value = std::mem::take(&mut prev_token.lexeme);
             let str_obj = ObjectType::ObjString(str_value);
@@ -267,15 +271,21 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn variable(&mut self) {
+    fn variable(&mut self, can_assign: bool) {
         if let Some(prev_token) = self.previous.as_ref() {
-            self.named_variable(prev_token.to_owned());
+            self.named_variable(prev_token.to_owned(), can_assign);
         }
     }
 
-    fn named_variable(&mut self, token_name: Token) {
+    fn named_variable(&mut self, token_name: Token, can_assign: bool) {
         let arg = self.identifier_constant(token_name);
-        self.emit_bytes(OpCode::GetGlobal.into(), arg);
+        match can_assign && self.match_token(TokenType::EQUAL) {
+            true => {
+                self.expression();
+                self.emit_bytes(OpCode::SetGlobal.into(), arg);
+            }
+            false => self.emit_bytes(OpCode::GetGlobal.into(), arg),
+        }
     }
 
     /// takes the given token and adds its lexeme to the chunk’s constant table as a string object.
@@ -461,7 +471,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 }
 
-type ParseFn<'scanner, 'chunk> = fn(&mut Compiler<'scanner, 'chunk>) -> ();
+type ParseFn<'scanner, 'chunk> = fn(&mut Compiler<'scanner, 'chunk>, bool) -> ();
 
 #[derive(Default)]
 pub struct ParseRule<'scanner, 'chunk> {
