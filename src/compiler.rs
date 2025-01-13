@@ -13,9 +13,10 @@ pub struct Compiler<'scanner, 'chunk> {
     scanner: Scanner<'scanner>,
     current: Option<Token>,
     previous: Option<Token>,
+    chunk: &'chunk mut Chunk,
+    local_track: LocalTracking,
     had_error: bool,
     panic_mode: bool,
-    chunk: &'chunk mut Chunk,
     debug: bool,
 }
 
@@ -28,14 +29,43 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             had_error: false,
             panic_mode: false,
             debug: false,
+            local_track: LocalTracking::default(),
             chunk,
+        }
+    }
+
+    fn synchronize(&mut self) {
+        self.panic_mode = false;
+
+        loop {
+            if let Some(curr_token) = self.current.take() {
+                if curr_token.token_type != TokenType::EOF {
+                    if let Some(prev_token) = self.previous.as_ref() {
+                        if prev_token.token_type == TokenType::SEMICOLON {
+                            return;
+                        }
+                    }
+
+                    match curr_token.token_type {
+                        TokenType::CLASS
+                        | TokenType::FUN
+                        | TokenType::VAR
+                        | TokenType::FOR
+                        | TokenType::IF
+                        | TokenType::WHILE
+                        | TokenType::PRINT
+                        | TokenType::RETURN => break,
+                        _ => (),
+                    }
+                }
+            }
+            self.advance();
         }
     }
 
     pub fn compile(&mut self) -> bool {
         self.advance();
-        // self.expression();
-        // self.consume(TokenType::EOF, "Expect end of expression.");
+        
         while !self.match_token(TokenType::EOF) {
             self.declaration()
         }
@@ -78,37 +108,12 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     fn statement(&mut self) {
         if self.match_token(TokenType::PRINT) {
             self.print_statement();
+        } else if self.match_token(TokenType::LEFTBRACE) {
+            self.begin_scope();
+            self.block();
+            self.end_scope();
         } else {
             self.expression_statement();
-        }
-    }
-
-    fn synchronize(&mut self) {
-        self.panic_mode = false;
-
-        loop {
-            if let Some(curr_token) = self.current.take() {
-                if curr_token.token_type != TokenType::EOF {
-                    if let Some(prev_token) = self.previous.as_ref() {
-                        if prev_token.token_type == TokenType::SEMICOLON {
-                            return;
-                        }
-                    }
-
-                    match curr_token.token_type {
-                        TokenType::CLASS
-                        | TokenType::FUN
-                        | TokenType::VAR
-                        | TokenType::FOR
-                        | TokenType::IF
-                        | TokenType::WHILE
-                        | TokenType::PRINT
-                        | TokenType::RETURN => break,
-                        _ => (),
-                    }
-                }
-            }
-            self.advance();
         }
     }
 
@@ -117,6 +122,16 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.consume(TokenType::SEMICOLON, "Expect ';' after value.");
         self.emit_byte(OpCode::PRINT.into());
     }
+
+    fn block(&mut self) {
+        while !self.check_token(TokenType::RIGHTBRACE) && !self.check_token(TokenType::EOF) {
+            self.declaration();
+        }
+
+        self.consume(TokenType::RIGHTBRACE, "Expect '}' after block.");
+    }
+
+    
 
     fn expression_statement(&mut self) {
         self.expression();
@@ -158,14 +173,45 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     /// Return the index of the added constant  
     fn parse_variable(&mut self, err_msg: &str) -> u8 {
         self.consume(TokenType::IDENTIFIER, err_msg);
+        self.declare_variable();
+        if *self.local_track.depth() > 0 {
+            return 0
+        }
         if let Some(prev_token) = self.previous.take() {
             return self.identifier_constant(prev_token);
         }
         unreachable!()
     }
 
+    fn declare_variable(&mut self) {
+        if *self.local_track.depth() > 0 {
+            return;
+        }
+
+        if let Some(prev_token) = self.previous.to_owned() {
+            for idx in (0..self.local_track.local_count).rev() {
+                if let Some(ref local) = self.local_track.locals[idx as usize] {
+                    if local.depth < *self.local_track.depth() {
+                        break;
+                    }
+
+                    if prev_token.is_equal(&local.name) {
+                        self.error("Already a variable with this name in this scope.");
+                    }
+                }
+                
+            }
+
+
+            self.add_local(prev_token.to_owned());
+        }
+    }
+
     /// outputs the bytecode instruction that defines the new variable and stores its initial value.
     fn define_variable(&mut self, global: u8) {
+        if *self.local_track.depth() > 0 {
+            return;
+        }
         self.emit_bytes(OpCode::DefineGlobal.into(), global);
     }
 
@@ -277,6 +323,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
+    /// TODO
     fn named_variable(&mut self, token_name: Token, can_assign: bool) {
         let arg = self.identifier_constant(token_name);
         match can_assign && self.match_token(TokenType::EQUAL) {
@@ -288,11 +335,39 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
+    fn begin_scope(&mut self) {
+        self.local_track.begin();
+    }
+
+    fn end_scope(&mut self) {
+        self.local_track.end();
+
+        while self.local_track.local_count > 0 && self.local_track.locals[(self.local_track.local_count - 1) as usize].as_ref().unwrap().depth > self.local_track.scope_depth {
+            self.emit_byte(OpCode::POP as u8);
+            self.local_track.local_count -= 1;
+        }
+    }
+
     /// takes the given token and adds its lexeme to the chunk’s constant table as a string object.
     fn identifier_constant(&mut self, mut token: Token) -> u8 {
         let str_value = std::mem::take(&mut token.lexeme);
         let str_obj = ObjectType::ObjString(str_value);
         self.make_constant(ValueType::Obj(Object::new(str_obj)))
+    }
+
+    fn add_local(&mut self, name: Token) {
+        if self.local_track.local_count == 255 {
+            self.error("Too many local variables in function.");
+            return;
+        }
+
+        let local = Local {
+            depth: *self.local_track.depth(),
+            name
+        };
+
+        self.local_track.add_local_at_idx(local, self.local_track.local_count);
+        self.local_track.local_count += 1;
     }
 
     /// Adds the ValueType to the chunk->constants and gets the index
@@ -492,6 +567,45 @@ impl<'scanner, 'chunk> ParseRule<'scanner, 'chunk> {
             precedence,
         }
     }
+}
+
+pub struct LocalTracking {
+    locals: [Option<Local>; 256],
+    local_count: u8,
+    scope_depth: u8,
+}
+
+impl Default for LocalTracking {
+    fn default() -> Self {
+        LocalTracking {
+            locals: [const{None}; 256],
+            local_count: 0,
+            scope_depth: 0
+        }
+    }
+}
+
+impl LocalTracking {
+    pub fn add_local_at_idx(&mut self, local: Local, idx: u8) {
+        self.locals[idx as usize] = Some(local);
+    }
+
+    pub fn begin(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    pub fn end(&mut self) {
+        self.scope_depth -= 1;
+    }
+
+    pub fn depth(&self) -> &u8 {
+        &self.scope_depth
+    }
+}
+
+pub struct Local {
+    name: Token,
+    depth: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

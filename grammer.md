@@ -12,6 +12,11 @@ statement := exprStmt
            | block ;
 ```
 
+## Block
+```ebnf
+block :="{" declaration* "}" ;
+```
+
 ## Declaration
 ```ebnf
 declaration := classDecl

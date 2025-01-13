@@ -13,6 +13,14 @@ impl Token {
             lexeme,
         }
     }
+
+    pub fn is_equal(&self, cmp_with: &Token) -> bool {
+        if self.lexeme.len() != cmp_with.lexeme.len() {
+            return false;
+        }
+
+        self.lexeme == cmp_with.lexeme
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
