@@ -1,5 +1,11 @@
 use crate::{
-    chunk::Chunk, debug::disassemble_chunk, object::{Object, ObjectType}, opcode::OpCode, scanner::Scanner, token::{Token, TokenType}, value::ValueType
+    chunk::Chunk,
+    debug::disassemble_chunk,
+    object::{Object, ObjectType},
+    opcode::OpCode,
+    scanner::Scanner,
+    token::{Token, TokenType},
+    value::ValueType,
 };
 use std::default::Default;
 
@@ -39,11 +45,34 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     fn declaration(&mut self) {
-        self.statement();
+        if self.match_token(TokenType::VAR) {
+            self.var_declaration();
+        } else {
+            self.statement();
+        }
 
         if self.panic_mode {
             self.synchronize();
         }
+    }
+
+    /// Parse the Variable and get the index of constant
+    /// If the current token is = then next expression value to constant else NIL
+    fn var_declaration(&mut self) {
+        let global = self.parse_variable("Expect variable name.");
+
+        if self.match_token(TokenType::EQUAL) {
+            self.expression();
+        } else {
+            self.emit_byte(OpCode::NIL.into());
+        }
+
+        self.consume(
+            TokenType::SEMICOLON,
+            "Expect ';' after variable declaration.",
+        );
+
+        self.define_variable(global);
     }
 
     fn statement(&mut self) {
@@ -57,24 +86,29 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     fn synchronize(&mut self) {
         self.panic_mode = false;
 
-        if let Some(curr_token) = self.current.take() {
-            while curr_token.token_type != TokenType::EOF {
-                if let Some(prev_token) = self.previous.as_ref() {
-                    if prev_token.token_type == TokenType::SEMICOLON {
-                        return;
+        loop {
+            if let Some(curr_token) = self.current.take() {
+                if curr_token.token_type != TokenType::EOF {
+                    if let Some(prev_token) = self.previous.as_ref() {
+                        if prev_token.token_type == TokenType::SEMICOLON {
+                            return;
+                        }
+                    }
+    
+                    match curr_token.token_type {
+                        TokenType::CLASS
+                        | TokenType::FUN
+                        | TokenType::VAR
+                        | TokenType::FOR
+                        | TokenType::IF
+                        | TokenType::WHILE
+                        | TokenType::PRINT
+                        | TokenType::RETURN => break,
+                        _ => (),
                     }
                 }
-
-                match curr_token.token_type {
-                    TokenType::CLASS | TokenType::FUN |
-                    TokenType::VAR | TokenType::FOR |
-                    TokenType::IF | TokenType::WHILE |
-                    TokenType::PRINT | TokenType::RETURN => return,
-                    _ => ()
-                }
-
-                self.advance();
             }
+            self.advance();
         }
     }
 
@@ -116,6 +150,23 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     fn expression(&mut self) {
         self.parse_precedence(Precedence::ASSIGNMENT);
+    }
+
+    /// Consumes the Identifier - if the current is `Identifier` then, move forward
+    /// Take ownership of the previous token (IDENTIFIER),
+    ///     adds the previous token's lexeme to chunk's constant
+    /// Return the index of the added constant  
+    fn parse_variable(&mut self, err_msg: &str) -> u8 {
+        self.consume(TokenType::IDENTIFIER, err_msg);
+        if let Some(prev_token) = self.previous.take() {
+            return self.identifier_constant(prev_token);
+        }
+        unreachable!()
+    }
+
+    /// outputs the bytecode instruction that defines the new variable and stores its initial value.
+    fn define_variable(&mut self, global: u8) {
+        self.emit_bytes(OpCode::DefineGlobal.into(), global);
     }
 
     fn parse_number(&mut self) {
@@ -208,7 +259,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn parse_string(&mut self) {
+    fn string(&mut self) {
         if let Some(prev_token) = self.previous.as_mut() {
             let str_value = std::mem::take(&mut prev_token.lexeme);
             let str_obj = ObjectType::ObjString(str_value);
@@ -216,11 +267,32 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
+    fn variable(&mut self) {
+        if let Some(prev_token) = self.previous.as_ref() {
+            self.named_variable(prev_token.to_owned());
+        }
+    }
+
+    fn named_variable(&mut self, token_name: Token) {
+        let arg = self.identifier_constant(token_name);
+        self.emit_bytes(OpCode::GetGlobal.into(), arg);
+    }
+
+    /// takes the given token and adds its lexeme to the chunk’s constant table as a string object.
+    fn identifier_constant(&mut self, mut token: Token) -> u8 {
+        let str_value = std::mem::take(&mut token.lexeme);
+        let str_obj = ObjectType::ObjString(str_value);
+        self.make_constant(ValueType::Obj(Object::new(str_obj)))
+    }
+
+    /// Adds the ValueType to the chunk->constants and gets the index
+    /// Adds the `OpCode::CONSTANT`(u8) and `index` in the chunk->opcodes
     fn emit_constant(&mut self, value: ValueType) {
         let cons_byte_idx = self.make_constant(value);
         self.emit_bytes(OpCode::CONSTANT as u8, cons_byte_idx);
     }
 
+    /// Add the ValueType to chunk->constants and returns the index
     fn make_constant(&mut self, value: ValueType) -> u8 {
         let constant = self.chunk.add_constant(value);
 
@@ -254,8 +326,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.emit_byte(OpCode::RETURN as u8);
     }
 
-    /// Checks if the current token doesn't matches the returnds false
-    /// Otherwise, advances the compiler
+    /// Checks if the current token doesn't matches the given then returns false
+    /// If it matches then, advances the compiler and return true
     fn match_token(&mut self, expected_token: TokenType) -> bool {
         if !self.check_token(expected_token) {
             return false;
@@ -264,7 +336,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         true
     }
 
-    /// Check if the current token (token_type) matches
+    /// Check if the current token (token_type) matches the expected token
+    /// Returns `true` if matches, otherwise `false`
     fn check_token(&mut self, expected_token: TokenType) -> bool {
         if let Some(curr_token) = self.current.as_ref() {
             return curr_token.token_type == expected_token;
@@ -272,6 +345,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         false
     }
 
+    /// If the given token is same as the current token, move forward
+    /// Else Error
     fn consume(&mut self, token_type: TokenType, message: &str) {
         if let Some(curr_token) = self.current.as_ref() {
             if curr_token.token_type == token_type {
@@ -353,8 +428,16 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::LESSEQUAL => {
                 ParseRule::new(None, Some(Self::parse_binary), Precedence::COMPARISON)
             }
-            TokenType::IDENTIFIER => ParseRule::default(),
-            TokenType::STRING => ParseRule { prefix: Some(Self::parse_string), infix: None, precedence: Precedence::NONE },
+            TokenType::IDENTIFIER => ParseRule {
+                prefix: Some(Self::variable),
+                infix: None,
+                precedence: Precedence::NONE,
+            },
+            TokenType::STRING => ParseRule {
+                prefix: Some(Self::string),
+                infix: None,
+                precedence: Precedence::NONE,
+            },
             TokenType::NUMBER => ParseRule::new(Some(Self::parse_number), None, Precedence::NONE),
             TokenType::AND => ParseRule::default(),
             TokenType::CLASS => ParseRule::default(),
@@ -380,6 +463,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
 type ParseFn<'scanner, 'chunk> = fn(&mut Compiler<'scanner, 'chunk>) -> ();
 
+#[derive(Default)]
 pub struct ParseRule<'scanner, 'chunk> {
     prefix: Option<ParseFn<'scanner, 'chunk>>,
     infix: Option<ParseFn<'scanner, 'chunk>>,
@@ -400,19 +484,10 @@ impl<'scanner, 'chunk> ParseRule<'scanner, 'chunk> {
     }
 }
 
-impl<'scanner, 'chunk> Default for ParseRule<'scanner, 'chunk> {
-    fn default() -> Self {
-        ParseRule {
-            prefix: None,
-            infix: None,
-            precedence: Precedence::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 #[repr(u8)]
 pub enum Precedence {
+    #[default]
     NONE,
     ASSIGNMENT, // =
     OR,         // or
@@ -424,12 +499,6 @@ pub enum Precedence {
     UNARY,      // ! -
     CALL,       // . ()
     PRIMARY,
-}
-
-impl Default for Precedence {
-    fn default() -> Self {
-        Precedence::NONE
-    }
 }
 
 impl From<u8> for Precedence {

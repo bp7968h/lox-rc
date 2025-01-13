@@ -24,7 +24,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
     }
 
     let instruction = chunk.op_codes_at(*offset);
-    match OpCode::try_from(instruction) {  
+    match OpCode::try_from(instruction) {
         Ok(o) => match o {
             OpCode::CONSTANT => constant_instruction("OP_CONSTANT", chunk, offset),
             OpCode::NEGATE => simple_instruction("OP_NEGATE", offset),
@@ -42,6 +42,8 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
             OpCode::LESS => simple_instruction("OP_LESS", offset),
             OpCode::PRINT => simple_instruction("OP_PRINT", offset),
             OpCode::POP => simple_instruction("OP_POP", offset),
+            OpCode::DefineGlobal => constant_instruction("OP_DEFINE_GLOBAL", chunk, offset),
+            OpCode::GetGlobal => constant_instruction("OP_GET_GLOBAL", chunk, offset),
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     chunk::Chunk, compiler::Compiler, debug::disassemble_instruction, opcode::OpCode,
     value::ValueType, InterpretError, InterpretResult,
@@ -8,6 +10,7 @@ pub struct VM {
     instr_pos: usize,
     debug: bool,
     stack: Vec<ValueType>,
+    globals: HashMap<String, ValueType>,
 }
 
 impl Default for VM {
@@ -21,8 +24,9 @@ impl VM {
         VM {
             chunk: None,
             instr_pos: 0,
-            debug: true,
+            debug: false,
             stack: Vec::new(),
+            globals: HashMap::new(),
         }
     }
 
@@ -89,9 +93,32 @@ impl VM {
                         if let Some(print_value) = self.pop_value() {
                             println!("{}", print_value);
                         }
-                    },
+                    }
                     OpCode::POP => {
-                        let _  = self.pop_value();
+                        let _ = self.pop_value();
+                    }
+                    OpCode::DefineGlobal => {
+                        // Get the variable name from constant vector (chunk),
+                        // Get the value from top of the stack (value of variable)
+                        // Store in the hash table
+                        let constant_name = self.read_constant().to_string();
+                        if let Some(identifier_name) = self.peek(0) {
+                            self.globals
+                                .insert(constant_name, identifier_name.to_owned());
+                            self.pop_value();
+                        }
+                    }
+                    OpCode::GetGlobal => {
+                        // Get the variable name from constant vector (chunk),
+                        // Check if the key's value is present in the globals hashmap
+                        // If it does then add that to the stack
+                        // Other runtime error
+                        let constant_name = self.read_constant().to_string();
+                        if let Some(value) = self.globals.get(&constant_name) {
+                            self.push_value(value.to_owned());
+                        } else {
+                            return Err(InterpretError::RuntimeError);
+                        }
                     }
                 },
                 Err(e) => Err(e)?,
@@ -99,6 +126,9 @@ impl VM {
         }
     }
 
+    /// In the OpCode vector, Constant takes two position, constant opcode and idx of the constant
+    /// Get the constant index as we are already at the instruction position where index is stored
+    /// Get the constant using that index position
     fn read_constant(&mut self) -> ValueType {
         let constant_idx = self.read_byte();
         if let Some(ref mut chunk) = self.chunk {
@@ -108,6 +138,8 @@ impl VM {
         panic!("[Read Constant] no chunk in vm to read!");
     }
 
+    /// Gets the current instruction position from self
+    /// Gets the OpCode as u8 using the current instruction position
     fn read_byte(&mut self) -> u8 {
         if let Some(chunk) = &self.chunk {
             let curr_instr_pos = self.instr_pos;
@@ -115,7 +147,7 @@ impl VM {
 
             return chunk.op_codes_at(curr_instr_pos);
         }
-        panic!("[Read Byte] no chunk in vm to read!");
+        unreachable!("[Read Byte] no chunk in vm to read!");
     }
 
     fn binary_op<F>(&mut self, op: F) -> InterpretResult
@@ -159,7 +191,7 @@ impl VM {
         Err(InterpretError::RuntimeError)
     }
 
-    fn _peek(&self, distance: usize) -> Option<&ValueType> {
+    fn peek(&self, distance: usize) -> Option<&ValueType> {
         let stack_len = self.stack.len();
         if distance >= stack_len {
             return None;
@@ -167,6 +199,7 @@ impl VM {
         self.stack.get(stack_len - 1 - distance)
     }
 
+    /// Strore the ValueType in the Vm's stack
     fn push_value(&mut self, value: ValueType) {
         self.stack.push(value);
     }

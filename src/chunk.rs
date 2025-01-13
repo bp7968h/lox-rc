@@ -54,6 +54,8 @@ impl Chunk {
         self.lines.push(line);
     }
 
+    /// Add the given ValueType to constants
+    /// Return the index of the constant
     pub fn add_constant(&mut self, value: ValueType) -> usize {
         self.constants.push(value);
 

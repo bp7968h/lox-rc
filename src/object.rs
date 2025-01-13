@@ -9,10 +9,8 @@ pub struct Object {
 }
 
 impl Object {
-    pub fn new(obj_type: ObjectType) ->  Self {
-        Object {
-            obj_type
-        }
+    pub fn new(obj_type: ObjectType) -> Self {
+        Object { obj_type }
     }
 }
 
@@ -24,11 +22,11 @@ impl PartialEq for Object {
 
 impl Add for Object {
     type Output = Result<Self, InterpretError>;
-    
+
     fn add(self, rhs: Self) -> Self::Output {
         match self.obj_type + rhs.obj_type {
             Ok(new_obj) => Ok(Object::new(new_obj)),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 }
@@ -54,7 +52,7 @@ impl PartialEq for ObjectType {
 
 impl Add for ObjectType {
     type Output = Result<Self, InterpretError>;
-    
+
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (ObjectType::ObjString(a), ObjectType::ObjString(b)) => {
@@ -62,7 +60,7 @@ impl Add for ObjectType {
                 new_str.push_str(&b);
 
                 Ok(ObjectType::ObjString(new_str))
-            },
+            }
         }
     }
 }

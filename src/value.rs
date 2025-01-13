@@ -34,10 +34,7 @@ impl ValueType {
     }
 
     pub fn is_obj_type(&self) -> bool {
-        match self {
-            ValueType::Obj(_) => true,
-            _ => false,
-        }
+        matches!(self, ValueType::Obj(_))
     }
 }
 
