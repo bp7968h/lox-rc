@@ -45,12 +45,21 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
             OpCode::DefineGlobal => constant_instruction("OP_DEFINE_GLOBAL", chunk, offset),
             OpCode::GetGlobal => constant_instruction("OP_GET_GLOBAL", chunk, offset),
             OpCode::SetGlobal => constant_instruction("OP_SET_GLOBAL", chunk, offset),
+            OpCode::GetLocal => byte_instruction("OP_GET_LOCAL", chunk, offset),
+            OpCode::SetLocal => byte_instruction("OP_SET_LOCAL", chunk, offset),
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");
             *offset + 1
         }
     }
+}
+
+fn byte_instruction(instruction_name: &str, chunk: &Chunk, offset: &usize) -> usize {
+    let constant_idx = chunk.op_codes_at(*offset + 1);
+    print!("{:<16} {:4} ", instruction_name, constant_idx);
+
+    *offset + 2
 }
 
 fn simple_instruction(instruction_name: &str, offset: &usize) -> usize {

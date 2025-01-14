@@ -65,7 +65,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
     pub fn compile(&mut self) -> bool {
         self.advance();
-        
+
         while !self.match_token(TokenType::EOF) {
             self.declaration()
         }
@@ -131,8 +131,6 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.consume(TokenType::RIGHTBRACE, "Expect '}' after block.");
     }
 
-    
-
     fn expression_statement(&mut self) {
         self.expression();
         self.consume(TokenType::SEMICOLON, "Expect ';' after expression.");
@@ -175,7 +173,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.consume(TokenType::IDENTIFIER, err_msg);
         self.declare_variable();
         if *self.local_track.depth() > 0 {
-            return 0
+            return 0;
         }
         if let Some(prev_token) = self.previous.take() {
             return self.identifier_constant(prev_token);
@@ -199,9 +197,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                         self.error("Already a variable with this name in this scope.");
                     }
                 }
-                
             }
-
 
             self.add_local(prev_token.to_owned());
         }
@@ -323,16 +319,33 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    /// TODO
     fn named_variable(&mut self, token_name: Token, can_assign: bool) {
-        let arg = self.identifier_constant(token_name);
+        let (arg, get_op, set_op) = match self.resolve_local(&token_name) {
+            Some(arg) => (arg, OpCode::GetLocal, OpCode::SetLocal),
+            None => {
+                let new_arg = self.identifier_constant(token_name);
+                (new_arg, OpCode::GetGlobal, OpCode::SetGlobal)
+            }
+        };
+
         match can_assign && self.match_token(TokenType::EQUAL) {
             true => {
                 self.expression();
-                self.emit_bytes(OpCode::SetGlobal.into(), arg);
+                self.emit_bytes(set_op.into(), arg);
             }
-            false => self.emit_bytes(OpCode::GetGlobal.into(), arg),
+            false => self.emit_bytes(get_op.into(), arg),
         }
+    }
+
+    fn resolve_local(&self, token_name: &Token) -> Option<u8> {
+        for idx in (0..self.local_track.local_count).rev() {
+            if let Some(local) = self.local_track.locals.get(idx as usize) {
+                if local.as_ref().unwrap().name.is_equal(token_name) {
+                    return Some(idx);
+                }
+            }
+        }
+        None
     }
 
     fn begin_scope(&mut self) {
@@ -342,9 +355,21 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     fn end_scope(&mut self) {
         self.local_track.end();
 
-        while self.local_track.local_count > 0 && self.local_track.locals[(self.local_track.local_count - 1) as usize].as_ref().unwrap().depth > self.local_track.scope_depth {
-            self.emit_byte(OpCode::POP as u8);
-            self.local_track.local_count -= 1;
+        while let Some(local) = self
+            .local_track
+            .locals
+            .get((self.local_track.local_count.wrapping_sub(1)) as usize)
+        {
+            match local.as_ref() {
+                Some(l) => {
+                    if l.depth <= self.local_track.scope_depth {
+                        break;
+                    }
+                    self.emit_byte(OpCode::POP as u8);
+                    self.local_track.local_count -= 1;
+                }
+                None => break,
+            }
         }
     }
 
@@ -363,10 +388,11 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
 
         let local = Local {
             depth: *self.local_track.depth(),
-            name
+            name,
         };
 
-        self.local_track.add_local_at_idx(local, self.local_track.local_count);
+        self.local_track
+            .add_local_at_idx(local, self.local_track.local_count);
         self.local_track.local_count += 1;
     }
 
@@ -578,9 +604,9 @@ pub struct LocalTracking {
 impl Default for LocalTracking {
     fn default() -> Self {
         LocalTracking {
-            locals: [const{None}; 256],
+            locals: [const { None }; 256],
             local_count: 0,
-            scope_depth: 0
+            scope_depth: 0,
         }
     }
 }

@@ -132,6 +132,16 @@ impl VM {
                             }
                         }
                     }
+                    OpCode::GetLocal => {
+                        let slot = self.read_byte();
+                        self.push_value(self.stack[slot as usize].to_owned());
+                    }
+                    OpCode::SetLocal => {
+                        let slot = self.read_byte();
+                        if let Some(value) = self.peek(0) {
+                            self.stack[slot as usize] = value.to_owned()
+                        }
+                    }
                 },
                 Err(e) => Err(e)?,
             }
