@@ -182,14 +182,14 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     }
 
     fn declare_variable(&mut self) {
-        if *self.local_track.depth() > 0 {
+        if *self.local_track.depth() == 0 {
             return;
         }
 
         if let Some(prev_token) = self.previous.to_owned() {
             for idx in (0..self.local_track.local_count).rev() {
                 if let Some(ref local) = self.local_track.locals[idx as usize] {
-                    if local.depth < *self.local_track.depth() {
+                    if local.depth < Some(*self.local_track.depth()) {
                         break;
                     }
 
@@ -206,9 +206,18 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     /// outputs the bytecode instruction that defines the new variable and stores its initial value.
     fn define_variable(&mut self, global: u8) {
         if *self.local_track.depth() > 0 {
+            self.mark_initialized();
             return;
         }
         self.emit_bytes(OpCode::DefineGlobal.into(), global);
+    }
+
+    fn mark_initialized(&mut self) {
+        if let Some(local_depth) =
+            self.local_track.locals[(self.local_track.local_count - 1) as usize].as_mut()
+        {
+            local_depth.depth = Some(self.local_track.scope_depth);
+        }
     }
 
     fn parse_number(&mut self, _can_assign: bool) {
@@ -337,11 +346,16 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
-    fn resolve_local(&self, token_name: &Token) -> Option<u8> {
+    fn resolve_local(&mut self, token_name: &Token) -> Option<u8> {
         for idx in (0..self.local_track.local_count).rev() {
             if let Some(local) = self.local_track.locals.get(idx as usize) {
-                if local.as_ref().unwrap().name.is_equal(token_name) {
-                    return Some(idx);
+                if let Some(local_val) = local.as_ref() {
+                    if local_val.name.is_equal(token_name) {
+                        if local_val.depth.is_none() {
+                            self.error("Can't read local variable in its own initializer.");
+                        }
+                        return Some(idx);
+                    }
                 }
             }
         }
@@ -362,7 +376,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         {
             match local.as_ref() {
                 Some(l) => {
-                    if l.depth <= self.local_track.scope_depth {
+                    if l.depth <= Some(self.local_track.scope_depth) {
                         break;
                     }
                     self.emit_byte(OpCode::POP as u8);
@@ -387,7 +401,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
 
         let local = Local {
-            depth: *self.local_track.depth(),
+            // depth: *self.local_track.depth(),
+            depth: None,
             name,
         };
 
@@ -631,7 +646,7 @@ impl LocalTracking {
 
 pub struct Local {
     name: Token,
-    depth: u8,
+    depth: Option<u8>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
