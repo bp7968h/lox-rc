@@ -26,6 +26,7 @@ pub enum OpCode {
     SetLocal,
     JumpIfFalse,
     JUMP,
+    LOOP,
 }
 
 impl TryFrom<u8> for OpCode {
@@ -55,6 +56,7 @@ impl TryFrom<u8> for OpCode {
             20 => Ok(OpCode::SetLocal),
             21 => Ok(OpCode::JumpIfFalse),
             22 => Ok(OpCode::JUMP),
+            23 => Ok(OpCode::LOOP),
             _ => Err(InterpretError::CompileError),
         }
     }

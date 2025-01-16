@@ -49,6 +49,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
             OpCode::SetLocal => byte_instruction("OP_SET_LOCAL", chunk, offset),
             OpCode::JUMP => jump_instruction("OP_JUMP", 1, chunk, offset),
             OpCode::JumpIfFalse => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
+            OpCode::LOOP => jump_instruction("OP_LOOP", -1, chunk, offset),
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");
@@ -57,7 +58,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
     }
 }
 
-fn jump_instruction(instruction_name: &str, sign: usize, chunk: &Chunk, offset: &usize) -> usize {
+fn jump_instruction(instruction_name: &str, sign: isize, chunk: &Chunk, offset: &usize) -> usize {
     let high = chunk.op_codes_at(offset + 1);
     let low = chunk.op_codes_at(offset + 2);
 
@@ -66,7 +67,7 @@ fn jump_instruction(instruction_name: &str, sign: usize, chunk: &Chunk, offset: 
         "{:<16} {:4} -> {}",
         instruction_name,
         offset,
-        offset + 3 + sign * jump as usize
+        *offset as isize + 3 + sign * jump as isize
     );
 
     offset + 3

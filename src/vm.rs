@@ -154,6 +154,10 @@ impl VM {
                         let offset = self.read_short();
                         self.instr_pos += offset as usize;
                     }
+                    OpCode::LOOP => {
+                        let offset = self.read_short();
+                        self.instr_pos -= offset as usize;
+                    }
                 },
                 Err(e) => Err(e)?,
             }
