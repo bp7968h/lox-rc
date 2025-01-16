@@ -34,6 +34,10 @@ impl Chunk {
         self.op_codes[offset]
     }
 
+    pub fn op_codes_at_mut(&mut self, offset: usize) -> Option<&mut u8> {
+        self.op_codes.get_mut(offset)
+    }
+
     pub fn line_from_offset(&self, offset: usize) -> usize {
         if offset < self.lines.len() {
             return self.lines[offset];

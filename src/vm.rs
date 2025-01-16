@@ -142,6 +142,18 @@ impl VM {
                             self.stack[slot as usize] = value.to_owned()
                         }
                     }
+                    OpCode::JumpIfFalse => {
+                        let offset = self.read_short();
+                        if let Some(value) = self.peek(0) {
+                            if value.is_falsey() {
+                                self.instr_pos += offset as usize;
+                            }
+                        }
+                    }
+                    OpCode::JUMP => {
+                        let offset = self.read_short();
+                        self.instr_pos += offset as usize;
+                    }
                 },
                 Err(e) => Err(e)?,
             }
@@ -170,6 +182,17 @@ impl VM {
             return chunk.op_codes_at(curr_instr_pos);
         }
         unreachable!("[Read Byte] no chunk in vm to read!");
+    }
+
+    fn read_short(&mut self) -> u16 {
+        assert!(self.chunk.is_some());
+        self.instr_pos += 2;
+        let chunk = self.chunk.as_mut().unwrap();
+
+        let left_byte = (chunk.op_codes_at(self.instr_pos - 2) as u16) << 8;
+        let right_byte = chunk.op_codes_at(self.instr_pos - 1) as u16;
+
+        left_byte | right_byte
     }
 
     fn binary_op<F>(&mut self, op: F) -> InterpretResult

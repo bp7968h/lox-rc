@@ -47,12 +47,29 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: &usize) -> usize {
             OpCode::SetGlobal => constant_instruction("OP_SET_GLOBAL", chunk, offset),
             OpCode::GetLocal => byte_instruction("OP_GET_LOCAL", chunk, offset),
             OpCode::SetLocal => byte_instruction("OP_SET_LOCAL", chunk, offset),
+            OpCode::JUMP => jump_instruction("OP_JUMP", 1, chunk, offset),
+            OpCode::JumpIfFalse => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         },
         Err(_) => {
             eprintln!("Unknown OpCode: `invalid instruction received while converting to opcode`");
             *offset + 1
         }
     }
+}
+
+fn jump_instruction(instruction_name: &str, sign: usize, chunk: &Chunk, offset: &usize) -> usize {
+    let high = chunk.op_codes_at(offset + 1);
+    let low = chunk.op_codes_at(offset + 2);
+
+    let jump = ((high as u16) << 8) | (low as u16);
+    println!(
+        "{:<16} {:4} -> {}",
+        instruction_name,
+        offset,
+        offset + 3 + sign * jump as usize
+    );
+
+    offset + 3
 }
 
 fn byte_instruction(instruction_name: &str, chunk: &Chunk, offset: &usize) -> usize {

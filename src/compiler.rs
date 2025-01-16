@@ -108,6 +108,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     fn statement(&mut self) {
         if self.match_token(TokenType::PRINT) {
             self.print_statement();
+        } else if self.match_token(TokenType::IF) {
+            self.if_statement();
         } else if self.match_token(TokenType::LEFTBRACE) {
             self.begin_scope();
             self.block();
@@ -121,6 +123,29 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         self.expression();
         self.consume(TokenType::SEMICOLON, "Expect ';' after value.");
         self.emit_byte(OpCode::PRINT.into());
+    }
+
+    /// Consume the (, compile the condition expression which leaves condition value on top of stack
+    /// Consume the )
+    fn if_statement(&mut self) {
+        self.consume(TokenType::LEFTPAREN, "Expect '(' after 'if'.");
+        self.expression();
+        self.consume(TokenType::RIGHTPAREN, "Expect ')' after condition.");
+
+        let then_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+        self.emit_byte(OpCode::POP as u8);
+        self.statement();
+
+        let else_jump = self.emit_jump(OpCode::JUMP as u8);
+
+        self.patch_jump(then_jump);
+        self.emit_byte(OpCode::POP as u8);
+
+        if self.match_token(TokenType::ELSE) {
+            self.statement();
+        }
+
+        self.patch_jump(else_jump);
     }
 
     fn block(&mut self) {
@@ -353,6 +378,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                     if local_val.name.is_equal(token_name) {
                         if local_val.depth.is_none() {
                             self.error("Can't read local variable in its own initializer.");
+                            return None;
                         }
                         return Some(idx);
                     }
@@ -428,6 +454,30 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
 
         constant as u8
+    }
+
+    pub fn emit_jump(&mut self, instruction: u8) -> usize {
+        self.emit_byte(instruction);
+        self.emit_byte(0xff);
+        self.emit_byte(0xff);
+
+        self.chunk.op_codes_len() - 2
+    }
+
+    pub fn patch_jump(&mut self, offset: usize) {
+        let jump = self.chunk.op_codes_len() - offset - 2;
+
+        if jump > u16::MAX as usize {
+            self.error("Too much code to jump over.");
+        }
+
+        if let Some(first_jump) = self.chunk.op_codes_at_mut(offset) {
+            *first_jump = ((jump >> 8) & 0xff) as u8;
+        }
+
+        if let Some(next_jump) = self.chunk.op_codes_at_mut(offset + 1) {
+            *next_jump = (jump & 0xff) as u8;
+        }
     }
 
     pub fn emit_byte(&mut self, byte: u8) {

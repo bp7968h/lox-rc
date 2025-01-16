@@ -1,0 +1,6 @@
+var test = false;
+if (test) {
+  print "True";
+} else {
+  print "False";
+}
