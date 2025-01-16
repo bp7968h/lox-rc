@@ -339,6 +339,26 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         }
     }
 
+    fn and_(&mut self, _can_assign: bool) {
+        let end_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+
+        self.emit_byte(OpCode::POP as u8);
+        self.parse_precedence(Precedence::AND);
+
+        self.patch_jump(end_jump);
+    }
+
+    fn or_(&mut self, _can_assign: bool) {
+        let else_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+        let end_jump = self.emit_jump(OpCode::JUMP as u8);
+
+        self.patch_jump(else_jump);
+        self.emit_byte(OpCode::POP as u8);
+
+        self.parse_precedence(Precedence::OR);
+        self.patch_jump(end_jump);
+    }
+
     fn string(&mut self, _can_assign: bool) {
         if let Some(prev_token) = self.previous.as_mut() {
             let str_value = std::mem::take(&mut prev_token.lexeme);
@@ -615,7 +635,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
                 precedence: Precedence::NONE,
             },
             TokenType::NUMBER => ParseRule::new(Some(Self::parse_number), None, Precedence::NONE),
-            TokenType::AND => ParseRule::default(),
+            TokenType::AND => ParseRule::new(None, Some(Self::and_), Precedence::AND),
             TokenType::CLASS => ParseRule::default(),
             TokenType::ELSE => ParseRule::default(),
             TokenType::FALSE => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
@@ -623,7 +643,7 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             TokenType::FUN => ParseRule::default(),
             TokenType::IF => ParseRule::default(),
             TokenType::NIL => ParseRule::new(Some(Self::parse_literal), None, Precedence::NONE),
-            TokenType::OR => ParseRule::default(),
+            TokenType::OR => ParseRule::new(None, Some(Self::or_), Precedence::AND),
             TokenType::PRINT => ParseRule::default(),
             TokenType::RETURN => ParseRule::default(),
             TokenType::SUPER => ParseRule::default(),

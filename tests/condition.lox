@@ -1,5 +1,5 @@
 var test = false;
-if (test) {
+if (test or true and true) {
   print "True";
 } else {
   print "False";
