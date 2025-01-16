@@ -1,0 +1,12 @@
+var i = 0;
+while (i < 10) {
+  print i;
+  i = i + 1;
+}
+
+print "while done";
+print "";
+
+for (var a = 1; a < 10; a = a + 1) {
+  print a;
+}

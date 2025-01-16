@@ -112,6 +112,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
             self.if_statement();
         } else if self.match_token(TokenType::WHILE) {
             self.while_statement();
+        } else if self.match_token(TokenType::FOR) {
+            self.for_statement();
         } else if self.match_token(TokenType::LEFTBRACE) {
             self.begin_scope();
             self.block();
@@ -119,6 +121,54 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
         } else {
             self.expression_statement();
         }
+    }
+
+    /// If a for statement declares a variable, that variable should be scoped to the loop body.
+    fn for_statement(&mut self) {
+        // ? - means that it is optional
+        // for (?initialization;?condition;?in/decreament)
+        self.begin_scope();
+        self.consume(TokenType::LEFTPAREN, "Expect '(' after 'for'.");
+        if self.match_token(TokenType::SEMICOLON) {
+            // nothing to do
+        } else if self.match_token(TokenType::VAR) {
+            self.var_declaration();
+        } else {
+            self.expression_statement();
+        }
+
+        let mut loop_start = self.chunk.op_codes_len();
+        let mut exit_jump = None;
+        if !self.match_token(TokenType::SEMICOLON) {
+            self.expression();
+            self.consume(TokenType::SEMICOLON, "Expect ';' after loop condition.");
+
+            exit_jump = Some(self.emit_jump(OpCode::JumpIfFalse as u8));
+            self.emit_byte(OpCode::POP as u8);
+        }
+
+        if !self.match_token(TokenType::RIGHTPAREN) {
+            let body_jump = self.emit_jump(OpCode::JUMP as u8);
+            let increament_start = self.chunk.op_codes_len();
+            self.expression();
+            self.emit_byte(OpCode::POP as u8);
+
+            self.consume(TokenType::RIGHTPAREN, "Expect ')' after for clauses.");
+
+            self.emit_loop(loop_start);
+            loop_start = increament_start;
+            self.patch_jump(body_jump);
+        }
+
+        self.statement();
+        self.emit_loop(loop_start);
+
+        if let Some(jump) = exit_jump {
+            self.patch_jump(jump);
+            self.emit_byte(OpCode::POP as u8);
+        }
+
+        self.end_scope();
     }
 
     fn while_statement(&mut self) {

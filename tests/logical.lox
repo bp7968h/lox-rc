@@ -1,0 +1,6 @@
+var a = true;
+var b = false;
+
+if (a or b and true) {
+  print "true and false";
+} 
