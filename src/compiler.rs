@@ -1,7 +1,7 @@
 use crate::{
     chunk::Chunk,
     debug::disassemble_chunk,
-    object::{Object, ObjectType},
+    object::{ObjString, Object},
     opcode::OpCode,
     scanner::Scanner,
     token::{Token, TokenType},
@@ -429,8 +429,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     fn string(&mut self, _can_assign: bool) {
         if let Some(prev_token) = self.previous.as_mut() {
             let str_value = std::mem::take(&mut prev_token.lexeme);
-            let str_obj = ObjectType::ObjString(str_value);
-            self.emit_constant(ValueType::Obj(Object::new(str_obj)));
+            let str_obj = ObjString::new(str_value);
+            self.emit_constant(ValueType::Obj(Object::ObjString(str_obj)));
         }
     }
 
@@ -503,8 +503,8 @@ impl<'scanner, 'chunk> Compiler<'scanner, 'chunk> {
     /// takes the given token and adds its lexeme to the chunk’s constant table as a string object.
     fn identifier_constant(&mut self, mut token: Token) -> u8 {
         let str_value = std::mem::take(&mut token.lexeme);
-        let str_obj = ObjectType::ObjString(str_value);
-        self.make_constant(ValueType::Obj(Object::new(str_obj)))
+        let str_obj = ObjString::new(str_value);
+        self.make_constant(ValueType::Obj(Object::ObjString(str_obj)))
     }
 
     fn add_local(&mut self, name: Token) {

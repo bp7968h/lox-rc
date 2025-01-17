@@ -1,6 +1,6 @@
 use crate::value::ValueType;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chunk {
     op_codes: Vec<u8>,
     lines: Vec<usize>,
